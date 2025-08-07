@@ -1,3 +1,9 @@
+import dotenv from "dotenv";
+import path from "path";
+
+// Load variables from .env.local file
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+
 import { MongoClient, Db } from "mongodb";
 
 if (!process.env.MONGODB_URI) {
@@ -30,7 +36,8 @@ if (process.env.NODE_ENV === "development") {
 
 export async function getDatabase(): Promise<Db> {
   const client = await clientPromise;
-  return client.db("social-credit");
+  // Connect to the SocialCreditSystem database
+  return client.db("SocialCreditSystem");
 }
 
 export default clientPromise;

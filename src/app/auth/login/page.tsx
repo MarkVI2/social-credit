@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [identifier, setIdentifier] = useState(""); // Can be username or email
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -26,9 +28,8 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert("Login successful!");
-        // TODO: Redirect to dashboard or handle successful login
-        console.log("User:", data.user);
+        // Redirect to dashboard
+        router.push("/dashboard");
       } else {
         setError(data.message);
       }

@@ -5,7 +5,8 @@ import { User, UserInput } from "@/types/user";
 export class UserService {
   private static async getCollection() {
     const db = await getDatabase();
-    return db.collection<User>("users");
+    // Use 'userinformation' collection as requested
+    return db.collection<User>("userinformation");
   }
 
   static async hashPassword(password: string): Promise<string> {
