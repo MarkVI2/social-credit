@@ -28,6 +28,11 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (data.success) {
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("currentUser", JSON.stringify(data.user));
+          }
+        } catch {}
         // Redirect to dashboard
         router.push("/dashboard");
       } else {
@@ -106,7 +111,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#C62828] text-white py-3 px-4 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 disabled:opacity-60"
+              className="w-full bg-[#C62828] text-white py-3 px-4 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 disabled:opacity-60 btn-3d"
             >
               {isLoading ? "Signing In..." : "Sign In"}
             </button>

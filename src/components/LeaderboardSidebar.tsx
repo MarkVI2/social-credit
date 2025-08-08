@@ -46,7 +46,14 @@ export default function LeaderboardSidebar() {
 
   return (
     <aside
-      className="w-full sm:w-80 shrink-0 border-4 border-[#28282B] bg-[#F5F5DC] text-[#28282B] p-3 sm:p-4 lg:p-5 shadow-[6px_6px_0_0_#28282B]"
+      className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5 shadow-[6px_6px_0_0_#28282B]"
+      style={{
+        borderColor: "var(--foreground)",
+        background: "var(--background)",
+        color: "var(--foreground)",
+        borderWidth: 4,
+        borderStyle: "solid",
+      }}
       aria-label="Leaderboard Sidebar"
     >
       <header className="mb-2 sm:mb-3">
@@ -55,7 +62,12 @@ export default function LeaderboardSidebar() {
         >
           TOP PARTY MEMBERS
         </h2>
-        <p className="mt-1 text-[10px] sm:text-xs text-[#28282B]/80 font-mono">
+        <p
+          className="mt-1 text-[10px] sm:text-xs font-mono"
+          style={{
+            color: "color-mix(in oklab, var(--foreground) 80%, transparent)",
+          }}
+        >
           Redeemable ☭ for coffee, lab help, or moral support
         </p>
       </header>
@@ -74,8 +86,13 @@ export default function LeaderboardSidebar() {
             <li
               key={u._id}
               className={`flex items-center gap-3 sm:gap-4 p-2 sm:p-3 border-2 ${
-                idx === 0 ? "border-[#C62828]" : "border-[#28282B]"
-              } bg-white/60 dark:bg-white/10`}
+                idx === 0 ? "border-[#C62828]" : ""
+              }`}
+              style={{
+                borderColor: idx === 0 ? undefined : "var(--foreground)",
+                background: "color-mix(in oklab, var(--background) 60%, white)",
+                backdropFilter: "saturate(120%)",
+              }}
             >
               <RankBadge rank={idx + 1} isTop={idx === 0} />
               <Avatar
@@ -95,10 +112,12 @@ export default function LeaderboardSidebar() {
               </div>
               <div
                 className={`font-mono text-sm sm:text-base tabular-nums px-2 py-1 border-2 ${
-                  idx === 0
-                    ? "border-[#C62828] text-[#C62828]"
-                    : "border-[#28282B]"
-                } bg-[#F5F5DC]`}
+                  idx === 0 ? "border-[#C62828] text-[#C62828]" : ""
+                }`}
+                style={{
+                  borderColor: idx === 0 ? undefined : "var(--foreground)",
+                  background: "var(--background)",
+                }}
                 aria-label="Kollaboration Kredits"
               >
                 {u.kollaborationKredits} KK
@@ -130,7 +149,7 @@ function RankBadge({ rank, isTop }: { rank: number; isTop: boolean }) {
       className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border-2 ${
         isTop
           ? "border-[#C62828] bg-[#C62828] text-white"
-          : "border-[#28282B] bg-[#F5F5DC]"
+          : "border-[#28282B] dark:border-[#ededed] bg-[#F5F5DC] dark:bg-[#1d1d1d]"
       } font-mono font-bold`}
       aria-label={`Rank ${rank}`}
     >
@@ -161,14 +180,14 @@ function Avatar({
   return (
     <div
       className={`relative w-9 h-9 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2 ${
-        isTop ? "border-[#C62828]" : "border-[#28282B]"
+        isTop ? "border-[#C62828]" : "border-[#28282B] dark:border-[#ededed]"
       }`}
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt={name} className="w-full h-full object-cover" />
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-[#F5F5DC] text-[#28282B] font-semibold">
+        <div className="w-full h-full flex items-center justify-center bg-[#F5F5DC] dark:bg-[#1d1d1d] text-[#28282B] dark:text-[#ededed] font-semibold">
           {initials}
         </div>
       )}

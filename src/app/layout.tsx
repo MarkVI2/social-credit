@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Oswald, JetBrains_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 
 const inter = Inter({
@@ -23,13 +24,20 @@ export const metadata: Metadata = {
   description: "Secure digital wallet and currency exchange platform",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read theme from cookies on the server to avoid flicker and apply globally
+  const cookieStore = await cookies();
+  const theme = cookieStore.get("theme")?.value === "dark" ? "dark" : "light";
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={theme === "dark" ? "dark" : undefined}
+      suppressHydrationWarning
+    >
       <body
         className={`${inter.variable} ${oswald.variable} ${jbMono.variable} antialiased`}
       >

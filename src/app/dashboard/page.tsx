@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
+import SettingsModal from "@/components/SettingsModal";
 
 interface User {
   _id: string;
@@ -11,16 +13,67 @@ interface User {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [balance] = useState(1000.0); // Mock balance for now
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [amount, setAmount] = useState<number>(0);
   const [reason, setReason] = useState<string>("");
+  const [showSettings, setShowSettings] = useState(false);
+
+  const userInitial = useMemo(
+    () => (user?.username ? user.username.charAt(0).toUpperCase() : "?"),
+    [user?.username]
+  );
+
+  // Random greeting messages
+  const greetings = useMemo(
+    () => [
+      "Welcome back, {name}",
+      "Good to see you, {name}",
+      "Salutations, {name}",
+      "Glorious return, {name}",
+      "Operational again, {name}",
+      "At your command, {name}",
+      "All systems ready, {name}",
+      "Comrade {name}, reporting in",
+      "Proceed, {name}",
+      "Control granted, {name}",
+    ],
+    []
+  );
+
+  const greeting = useMemo(() => {
+    const name = user?.username || "User";
+    const msg = greetings[Math.floor(Math.random() * greetings.length)];
+    return msg.replace("{name}", name);
+  }, [greetings, user?.username]);
+
+  // Validation state
+  const matchedUser = useMemo(
+    () =>
+      users.find(
+        (u) => u.username === selectedUser || u.email === selectedUser
+      ) || null,
+    [users, selectedUser]
+  );
+  const isValidUser = !!matchedUser;
+  const isValidAmount = Number.isFinite(amount) && amount > 0;
+  const isValidReason = reason.trim().length > 0;
+  const canSubmit = isValidUser && isValidAmount && isValidReason;
 
   useEffect(() => {
-    // TODO: Get user data from session/context when implementing authentication
-    // For now, using mock data
+    // Try to load current user from localStorage (temporary client-side session)
+    try {
+      const stored =
+        typeof window !== "undefined" && localStorage.getItem("currentUser");
+      if (stored) {
+        setUser(JSON.parse(stored));
+        return;
+      }
+    } catch {}
+    // Fallback mock (remove when real auth is wired)
     setUser({
       _id: "mock-id",
       username: "johndoe",
@@ -48,7 +101,19 @@ export default function DashboardPage() {
     const target = users.find(
       (u) => u.username === selectedUser || u.email === selectedUser
     );
-    console.log("Request", amount, "credits from", target?.username ?? selectedUser);
+    console.log(
+      "Request",
+      amount,
+      "credits from",
+      target?.username ?? selectedUser
+    );
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("currentUser");
+    } catch {}
+    router.push("/auth/login");
   };
 
   if (!user) {
@@ -60,34 +125,65 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5DC] p-4 text-[#28282B]">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-6">
+    <div
+      className="min-h-screen p-3 sm:p-4"
+      style={{ background: "var(--background)", color: "var(--foreground)" }}
+    >
+      <div className="mx-auto w-full max-w-6xl lg:max-w-none lg:px-4 flex flex-wrap items-start justify-center gap-4 sm:gap-6">
         {/* Leaderboard Sidebar */}
-        <div className="order-2 lg:order-1">
-          <LeaderboardSidebar />
-        </div>
+        <LeaderboardSidebar />
 
-        {/* Main content */}
-        <div className="order-1 lg:order-2 space-y-6">
-          {/* Header */}
-          <div className="bg-[#F5F5DC] p-6 border-4 border-[#28282B] text-[#28282B] rounded-none shadow-[8px_8px_0_0_#28282B]">
-            <div className="flex justify-between items-start gap-4">
-              <div>
-                <h1 className="font-heading text-2xl sm:text-3xl font-extrabold uppercase text-[#C62828] tracking-wider">
-                  Welcome Back, {user.username}
-                </h1>
-                <p className="font-mono text-xs sm:text-sm mt-1 opacity-80">
-                  Control panel of the credit collective
-                </p>
+        {/* Header (welcome bar) */}
+        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
+          <div
+            className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+            style={{
+              background: "var(--background)",
+              color: "var(--foreground)",
+              borderColor: "var(--foreground)",
+            }}
+          >
+            {/* Top row: avatar + greeting on the left, logout on the right */}
+            <div className="flex items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <button
+                  onClick={() => setShowSettings(true)}
+                  aria-label={`Open settings for ${user.username}`}
+                  className="w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-[#F5F5DC] dark:bg-[#121212] text-[#28282B] dark:text-[#ededed] border-4 border-[#28282B] dark:border-[#ededed] flex items-center justify-center font-bold btn-3d"
+                >
+                  {userInitial}
+                </button>
+                <div className="min-w-0">
+                  <h1 className="font-heading text-2xl sm:text-3xl font-extrabold uppercase text-[#C62828] tracking-wider truncate">
+                    {greeting}
+                  </h1>
+                  <p className="font-mono text-xs sm:text-sm mt-1 opacity-80 truncate">
+                    Control panel of the credit collective
+                  </p>
+                </div>
               </div>
-              <button className="bg-[#C62828] text-white px-4 py-2 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90">
-                Logout
-              </button>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <button
+                  onClick={handleLogout}
+                  className="bg-[#C62828] text-white px-4 py-2 sm:py-2 rounded-none font-bold border-4 border-[#28282B] dark:border-[#ededed] hover:opacity-90 btn-3d"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Balance */}
-          <div className="bg-[#F5F5DC] p-8 border-4 border-[#28282B] text-[#28282B] rounded-none shadow-[8px_8px_0_0_#28282B]">
+        {/* Balance */}
+        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
+          <div
+            className="p-4 sm:p-6 lg:p-8 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+            style={{
+              background: "var(--background)",
+              color: "var(--foreground)",
+              borderColor: "var(--foreground)",
+            }}
+          >
             <div className="text-center space-y-4">
               <h2 className="font-heading text-xl font-extrabold uppercase text-[#C62828] tracking-wider">
                 Current Balance
@@ -100,9 +196,18 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
+        </div>
 
-          {/* Select User */}
-          <div className="bg-[#F5F5DC] p-6 border-4 border-[#28282B] text-[#28282B] rounded-none shadow-[8px_8px_0_0_#28282B]">
+        {/* Select User */}
+        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
+          <div
+            className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+            style={{
+              background: "var(--background)",
+              color: "var(--foreground)",
+              borderColor: "var(--foreground)",
+            }}
+          >
             <h3 className="font-heading text-lg font-extrabold uppercase text-[#C62828] tracking-wider mb-4">
               Select User
             </h3>
@@ -110,8 +215,9 @@ export default function DashboardPage() {
               list="users"
               value={selectedUser}
               onChange={(e) => setSelectedUser(e.target.value)}
-              className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none"
+              className="w-full px-2.5 py-2 sm:px-3 sm:py-2.5 lg:px-4 lg:py-3 bg-[#F5F5DC] dark:bg-[#1d1d1d] border-4 border-[#28282B] dark:border-[#ededed] rounded-none text-[#28282B] dark:text-[#ededed] placeholder-[#28282B]/60 dark:placeholder-[#ededed]/60 focus:outline-none"
               placeholder="Search by username or email"
+              required
             />
             <datalist id="users">
               {users.map((u) => (
@@ -122,9 +228,18 @@ export default function DashboardPage() {
               ))}
             </datalist>
           </div>
+        </div>
 
-          {/* Reason */}
-          <div className="bg-[#F5F5DC] p-6 border-4 border-[#28282B] text-[#28282B] rounded-none shadow-[8px_8px_0_0_#28282B]">
+        {/* Reason */}
+        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
+          <div
+            className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+            style={{
+              background: "var(--background)",
+              color: "var(--foreground)",
+              borderColor: "var(--foreground)",
+            }}
+          >
             <h3 className="font-heading text-lg font-extrabold uppercase text-[#C62828] tracking-wider mb-4">
               Reason for Transaction
             </h3>
@@ -132,44 +247,78 @@ export default function DashboardPage() {
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none"
+              className="w-full px-2.5 py-2 sm:px-3 sm:py-2.5 lg:px-4 lg:py-3 bg-[#F5F5DC] dark:bg-[#1d1d1d] border-4 border-[#28282B] dark:border-[#ededed] rounded-none text-[#28282B] dark:text-[#ededed] placeholder-[#28282B]/60 dark:placeholder-[#ededed]/60 focus:outline-none"
               placeholder="Enter reason"
+              required
             />
           </div>
+        </div>
 
-          {/* Amount */}
-          <div className="bg-[#F5F5DC] p-6 border-4 border-[#28282B] text-[#28282B] rounded-none shadow-[8px_8px_0_0_#28282B]">
-            <h3 className="font-heading text-lg font-extrabold uppercase text-[#C62828] tracking-wider mb-4">
+        {/* Amount */}
+        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
+          <div
+            className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+            style={{
+              background: "var(--background)",
+              color: "var(--foreground)",
+              borderColor: "var(--foreground)",
+            }}
+          >
+            <h3 className="font-heading text-lg font-extrabold uppercase text-[#C62828] tracking-wider mb-4 text-center">
               Amount
             </h3>
             <input
               type="number"
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
-              min="0"
-              className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none font-mono"
+              min="1"
+              className="w-full max-w-xs mx-auto block px-2.5 py-2 sm:px-3 sm:py-2.5 lg:px-4 lg:py-3 bg-[#F5F5DC] dark:bg-[#1d1d1d] border-4 border-[#28282B] dark:border-[#ededed] rounded-none text-[#28282B] dark:text-[#ededed] placeholder-[#28282B]/60 dark:placeholder-[#ededed]/60 focus:outline-none font-mono text-center"
               placeholder="Enter credits"
+              required
             />
           </div>
+        </div>
 
-          {/* Actions */}
-          <div className="flex gap-4">
+        {/* Actions */}
+        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
+          <div className="flex gap-3 sm:gap-4">
             <button
               onClick={handleRequest}
-              className="flex-1 bg-[#F5F5DC] text-[#28282B] py-3 px-4 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 shadow-[6px_6px_0_0_#28282B]"
+              disabled={!canSubmit}
+              aria-disabled={!canSubmit}
+              className="flex-1 bg-[#F5F5DC] dark:bg-[#121212] text-[#28282B] dark:text-[#ededed] py-2.5 sm:py-3 px-3 sm:px-4 rounded-none font-bold border-4 border-[#28282B] dark:border-[#ededed] hover:opacity-90 btn-3d disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none"
             >
               Request
             </button>
             <button
               onClick={handleSend}
-              className="flex-1 bg-[#C62828] text-white py-3 px-4 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 shadow-[6px_6px_0_0_#28282B]"
+              disabled={!canSubmit}
+              aria-disabled={!canSubmit}
+              className="flex-1 bg-[#C62828] text-white py-2.5 sm:py-3 px-3 sm:px-4 rounded-none font-bold border-4 border-[#28282B] dark:border-[#ededed] hover:opacity-90 btn-3d disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none"
             >
               Send
             </button>
           </div>
-
-          {/* Recent Transactions */}
-          <div className="bg-[#F5F5DC] p-6 border-4 border-[#28282B] text-[#28282B] rounded-none shadow-[8px_8px_0_0_#28282B]">
+          {!canSubmit && (
+            <p className="mt-2 font-mono text-xs opacity-80">
+              Hint: select a valid user, enter a reason, and an amount greater
+              than 0.
+            </p>
+          )}
+          {showSettings && (
+            <SettingsModal user={user} onClose={() => setShowSettings(false)} />
+          )}
+        </div>
+        {/* Recent Transactions */}
+        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
+          <div
+            className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+            style={{
+              background: "var(--background)",
+              color: "var(--foreground)",
+              borderColor: "var(--foreground)",
+            }}
+          >
             <h3 className="font-heading text-lg font-extrabold uppercase text-[#C62828] tracking-wider mb-4">
               Recent Transactions
             </h3>

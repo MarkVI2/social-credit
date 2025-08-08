@@ -1,0 +1,125 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+interface Props {
+  user: { username: string; email: string } | null;
+  onClose: () => void;
+}
+
+export default function SettingsModal({ user, onClose }: Props) {
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
+    // Prefer cookie to keep SSR and CSR in sync
+    const cookieMatch = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("theme="));
+    const cookieTheme = cookieMatch?.split("=")[1] as
+      | "light"
+      | "dark"
+      | undefined;
+    if (cookieTheme === "dark" || cookieTheme === "light") return cookieTheme;
+    const ls = (localStorage.getItem("theme") as "light" | "dark") || null;
+    if (ls) return ls;
+    const prefersDark =
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return prefersDark ? "dark" : "light";
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "dark") root.classList.add("dark");
+    else root.classList.remove("dark");
+    // Persist to cookie for SSR and to localStorage for backward compatibility
+    try {
+      localStorage.setItem("theme", theme);
+    } catch {}
+    try {
+      const oneYear = 60 * 60 * 24 * 365;
+      document.cookie = `theme=${theme}; Path=/; Max-Age=${oneYear}; SameSite=Lax`;
+    } catch {}
+  }, [theme]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3"
+      role="dialog"
+      aria-modal="true"
+    >
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/30 dark:bg-black/60"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Panel */}
+      <div className="relative z-10 w-full max-w-lg border-4 border-[#28282B] dark:border-[#ededed] bg-[#F5F5DC] dark:bg-[#121212] p-5 sm:p-6 shadow-[10px_10px_0_0_#28282B] text-[#28282B] dark:text-[#ededed]">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-heading text-xl font-extrabold uppercase text-[#C62828] tracking-wider">
+              Settings
+            </h2>
+            <p className="font-mono text-xs opacity-80 mt-1">
+              {user?.username} · {user?.email}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-[#F5F5DC] dark:bg-[#121212] text-[#28282B] dark:text-[#ededed] border-4 border-[#28282B] dark:border-[#ededed] flex items-center justify-center font-bold btn-3d"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <div className="border-4 border-[#28282B] p-4 bg-white/60">
+            <h3 className="font-heading text-sm uppercase tracking-wider text-[#C62828] font-bold">
+              Profile
+            </h3>
+            <p className="font-mono text-xs opacity-80 mt-2">
+              Profile preferences coming soon.
+            </p>
+          </div>
+
+          <div className="border-4 border-[#28282B] dark:border-[#ededed] p-4 bg-white/60 dark:bg-[#1d1d1d]">
+            <h3 className="font-heading text-sm uppercase tracking-wider text-[#C62828] font-bold">
+              Theme
+            </h3>
+            <div className="mt-2 flex items-center gap-3">
+              <button
+                onClick={() => setTheme("light")}
+                aria-pressed={theme === "light"}
+                className={`px-3 py-2 border-4 rounded-none font-bold btn-3d ${
+                  theme === "light"
+                    ? "bg-[#F5F5DC] text-[#28282B] border-[#28282B]"
+                    : "bg-white text-[#28282B] border-[#28282B]"
+                }`}
+              >
+                Light
+              </button>
+              <button
+                onClick={() => setTheme("dark")}
+                aria-pressed={theme === "dark"}
+                className={`px-3 py-2 border-4 rounded-none font-bold btn-3d ${
+                  theme === "dark"
+                    ? "bg-[#121212] text-[#ededed] border-[#ededed]"
+                    : "bg-[#1d1d1d] text-[#ededed] border-[#ededed]"
+                }`}
+              >
+                Dark
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
