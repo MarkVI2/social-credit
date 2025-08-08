@@ -5,11 +5,11 @@ MongoDB, and TypeScript.
 
 ## Features
 
-- 🔐 Secure user authentication with salted password hashing
-- 🎓 University email validation (@mahindrauniversity.edu.in)
-- 💳 Digital wallet system (coming soon)
-- 🎨 Modern, minimalistic UI with high-tech styling
-- 🌐 MongoDB integration for user data storage
+- Secure user authentication with salted password hashing
+- University email validation (@mahindrauniversity.edu.in)
+- Digital wallet system (coming soon)
+- Modern, minimalistic UI with high-tech styling
+- MongoDB integration for user data storage
 
 ## Tech Stack
 

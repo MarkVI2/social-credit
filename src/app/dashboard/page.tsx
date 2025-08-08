@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [amount, setAmount] = useState<number>(0);
+  const [reason, setReason] = useState<string>("");
 
   useEffect(() => {
     // TODO: Get user data from session/context when implementing authentication
@@ -53,7 +54,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#9D1B1B] p-4">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 gap-6">
         {/* Header */}
         <div className="bg-[#28282B] rounded-2xl p-6 border border-gray-700">
           <div className="flex justify-between items-center">
@@ -86,7 +87,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* User Selection */}
+        {/* Select User */}
         <div className="bg-[#28282B] rounded-2xl p-6 border border-gray-700">
           <h3 className="text-xl font-semibold text-[#E7E7E7] mb-4">
             Select User
@@ -103,6 +104,20 @@ export default function DashboardPage() {
               <option key={u._id} value={u.username} />
             ))}
           </datalist>
+        </div>
+
+        {/* Reason */}
+        <div className="bg-[#28282B] rounded-2xl p-6 border border-gray-700">
+          <h3 className="text-xl font-semibold text-[#E7E7E7] mb-4">
+            Reason for Transaction
+          </h3>
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className="w-full px-4 py-3 bg-[#1a1a1d] border border-gray-600 rounded-lg text-[#E7E7E7]"
+            placeholder="Enter reason"
+          />
         </div>
 
         {/* Amount Input */}
@@ -133,7 +148,6 @@ export default function DashboardPage() {
             Send
           </button>
         </div>
-
         {/* Recent Transactions */}
         <div className="bg-[#28282B] rounded-2xl p-6 border border-gray-700">
           <h3 className="text-xl font-semibold text-[#E7E7E7] mb-4">
