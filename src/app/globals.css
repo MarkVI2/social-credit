@@ -1,21 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Color palette */
+  --background: #f5f5dc; /* parchment */
+  --foreground: #28282b; /* charcoal */
+  --accent: #c62828; /* revolution red */
+
+  /* Fonts */
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-oswald);
+  --font-mono: var(--font-mono);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* Tailwind will read CSS variables directly in class utilities; no @theme block needed */
 
+/* Keep contrast for users in dark mode but preserve palette intent */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #121212;
     --foreground: #ededed;
+    --accent: #c62828;
   }
 }
 
@@ -23,4 +27,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Helper: heading condensed font */
+.font-heading {
+  font-family: var(--font-heading), Impact, "Arial Narrow", sans-serif;
 }
