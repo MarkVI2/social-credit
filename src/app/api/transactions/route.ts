@@ -107,13 +107,18 @@ export async function GET(req: NextRequest) {
       50,
       Math.max(1, parseInt(searchParams.get("limit") || "10", 10))
     );
-    if (!userId && !usernameParam && !emailParam)
-      return NextResponse.json(
-        { success: false, message: "userId, username, or email required" },
-        { status: 400 }
-      );
-
     const db = await getDatabase();
+    // If no filter is provided, return latest global transactions
+    if (!userId && !usernameParam && !emailParam) {
+      const tx = db.collection("transactionHistory");
+      const items = await tx
+        .find({})
+        .sort({ timestamp: -1 })
+        .limit(limit)
+        .toArray();
+      return NextResponse.json({ success: true, items });
+    }
+
     const users = db.collection<{ username?: string; email?: string }>(
       "userinformation"
     );

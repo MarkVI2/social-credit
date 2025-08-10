@@ -31,6 +31,15 @@ export default function DashboardPage() {
       reason?: string;
     }>
   >([]);
+  const [globalRecent, setGlobalRecent] = useState<
+    Array<{
+      timestamp: string | Date;
+      from: string;
+      to: string;
+      amount: number;
+      reason?: string;
+    }>
+  >([]);
 
   const userInitial = useMemo(
     () => (user?.username ? user.username.charAt(0).toUpperCase() : "?"),
@@ -200,8 +209,30 @@ export default function DashboardPage() {
     }
   }, [user]);
 
+  // Fetch global recent transactions
+  const fetchGlobalRecent = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/transactions?limit=10`, {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        console.error(
+          "[GlobalRecentTx] HTTP error",
+          res.status,
+          res.statusText
+        );
+      }
+      const data = await res.json();
+      if (data.success) setGlobalRecent(data.items);
+      else console.error("[GlobalRecentTx] API error:", data.message || data);
+    } catch (e) {
+      console.error("[GlobalRecentTx] Failed to load transactions", e);
+    }
+  }, []);
+
   useEffect(() => {
     fetchRecent();
+    fetchGlobalRecent();
   }, [fetchRecent]);
 
   // Optional: light polling so incoming transactions appear without manual refresh
@@ -212,6 +243,14 @@ export default function DashboardPage() {
     }, 5 * 1000);
     return () => clearInterval(id);
   }, [user, fetchRecent]);
+
+  // Poll global recent as well
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchGlobalRecent();
+    }, 5 * 1000);
+    return () => clearInterval(id);
+  }, [fetchGlobalRecent]);
 
   const handleSend = async () => {
     const target = users.find(
@@ -574,6 +613,48 @@ export default function DashboardPage() {
                         </li>
                       )
                     )}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            {/* Global Transactions Log */}
+            <div className="w-full">
+              <div
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                style={{
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  borderColor: "var(--foreground)",
+                }}
+              >
+                <h3
+                  className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-3"
+                  style={{ color: "var(--accent)" }}
+                >
+                  All Users — Recent Transactions
+                </h3>
+                {globalRecent.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="font-mono opacity-80">No activity yet.</p>
+                  </div>
+                ) : (
+                  <ul
+                    className="divide-y-2"
+                    style={{ borderColor: "var(--foreground)" }}
+                  >
+                    {globalRecent.map((t, i) => (
+                      <li key={i} className="py-2">
+                        <div className="text-xs sm:text-sm font-mono opacity-80">
+                          {new Date(t.timestamp).toLocaleString()}
+                        </div>
+                        <div className="text-xs sm:text-sm font-mono mt-1">
+                          {`${t.from} has transfered ${t.amount} to ${t.to}$${
+                            t.reason ? ` for ${t.reason}` : ""
+                          }`}
+                        </div>
+                      </li>
+                    ))}
                   </ul>
                 )}
               </div>
