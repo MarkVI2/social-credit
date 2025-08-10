@@ -57,7 +57,7 @@ export default function LeaderboardSidebar() {
 
   return (
     <aside
-      className="w-full sm:w-full md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5 shadow-[6px_6px_0_0_#28282B]"
+      className="w-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-[6px_6px_0_0_#28282B]"
       style={{
         borderColor: "var(--foreground)",
         background: "var(--background)",

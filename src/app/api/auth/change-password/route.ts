@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+// Force Node.js runtime for database operations
+export const runtime = "nodejs";
 import { getDatabase } from "@/lib/mongodb";
 import { UserService } from "@/services/userService";
 import { sendPasswordChangeNotification } from "@/services/mailService";

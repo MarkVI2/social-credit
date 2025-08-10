@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/mongodb";
 import { getUserFromAuthHeader, requireAdmin } from "@/lib/auth";
 
+// Force Node.js runtime to allow MongoDB driver usage
+export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   const me = await getUserFromAuthHeader(req);
   if (!requireAdmin(me)) {

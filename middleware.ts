@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDatabase } from "@/lib/mongodb";
-import crypto from "crypto";
+// Removed Node.js-specific imports for Edge runtime compatibility
 
 export async function middleware(req: NextRequest) {
   const url = req.nextUrl;

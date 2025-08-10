@@ -7,15 +7,13 @@ export async function POST(req: NextRequest) {
     const user = await getUserFromAuthHeader(req);
     if (user) {
       const db = await getDatabase();
-      await db
-        .collection("userinformation")
-        .updateOne(
-          { _id: user._id },
-          {
-            $unset: { sessionTokenHash: "", sessionTokenExpiresAt: "" },
-            $set: { updatedAt: new Date() },
-          }
-        );
+      await db.collection("userinformation").updateOne(
+        { _id: user._id },
+        {
+          $unset: { sessionTokenHash: "", sessionTokenExpiresAt: "" },
+          $set: { updatedAt: new Date() },
+        }
+      );
     }
     const res = NextResponse.json({ success: true });
     res.cookies.set("auth_token", "", { httpOnly: true, maxAge: 0, path: "/" });

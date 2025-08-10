@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+// Force Node.js runtime to allow MongoDB driver usage
+export const runtime = "nodejs";
 import { getDatabase } from "@/lib/mongodb";
 import { getUserFromAuthHeader, requireAdmin } from "@/lib/auth";
 import { logTransaction } from "@/services/transactionService";

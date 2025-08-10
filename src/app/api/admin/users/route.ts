@@ -4,6 +4,8 @@ import { getUserFromAuthHeader, requireAdmin } from "@/lib/auth";
 import type { User } from "@/types/user";
 
 // GET /api/admin/users?query=...&page=1&limit=20
+// Force Node.js runtime to allow MongoDB driver usage
+export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   try {
     const me = await getUserFromAuthHeader(req);

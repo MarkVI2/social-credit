@@ -172,22 +172,46 @@ export default function DashboardPage() {
   }, [user, refreshCurrentUser]);
 
   // Fetch recent transactions for the logged-in user
-  useEffect(() => {
-    const load = async () => {
-      if (!user?._id) return;
-      try {
-        const res = await fetch(
-          `/api/transactions?userId=${user._id}&limit=10`,
-          { cache: "no-store" }
-        );
-        const data = await res.json();
-        if (data.success) setRecent(data.items);
-      } catch (e) {
-        console.error("Failed to load transactions", e);
+  const fetchRecent = useCallback(async () => {
+    if (!user) return;
+    try {
+      const idCandidate =
+        typeof (user as unknown as { _id?: unknown })._id === "string"
+          ? ((user as unknown as { _id?: string })._id as string)
+          : "";
+      const isValidObjectId = /^[a-fA-F0-9]{24}$/.test(idCandidate);
+      const url = isValidObjectId
+        ? `/api/transactions?userId=${idCandidate}&limit=10`
+        : `/api/transactions?username=${encodeURIComponent(
+            user.username
+          )}&limit=10`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) {
+        console.error("[RecentTx] HTTP error", res.status, res.statusText);
       }
-    };
-    load();
-  }, [user?._id]);
+      const data = await res.json();
+      if (data.success) {
+        setRecent(data.items);
+      } else {
+        console.error("[RecentTx] API error:", data.message || data);
+      }
+    } catch (e) {
+      console.error("[RecentTx] Failed to load transactions", e);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchRecent();
+  }, [fetchRecent]);
+
+  // Optional: light polling so incoming transactions appear without manual refresh
+  useEffect(() => {
+    if (!user) return;
+    const id = setInterval(() => {
+      fetchRecent();
+    }, 5 * 1000);
+    return () => clearInterval(id);
+  }, [user, fetchRecent]);
 
   const handleSend = async () => {
     const target = users.find(
@@ -211,11 +235,13 @@ export default function DashboardPage() {
         setReason("");
         // Refresh current user credits from server
         await refreshCurrentUser();
+        // Immediately refresh recent transactions list
+        await fetchRecent();
       } else {
-        console.error(data.message);
+        console.error("[Send] API error:", data.message || data);
       }
     } catch (e) {
-      console.error("Send error", e);
+      console.error("[Send] Network or unexpected error", e);
     }
   };
   // const handleRequest = () => {
@@ -254,7 +280,7 @@ export default function DashboardPage() {
       {/* Page container */}
       <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-3 min-w-0">
         {/* Layout: single column on sm/md, two-column grid on lg with fixed left rail */}
-        <div className="grid gap-4 lg:grid-cols-[300px_1fr] lg:items-start">
+        <div className="grid gap-4 lg:grid-cols-[20rem_1fr] lg:items-start">
           {/* Main content (first in DOM; on lg it will occupy the right column) */}
           <div className="w-full lg:col-start-2 max-w-screen-md mx-auto flex flex-col gap-4 min-w-0">
             {/* Header (welcome bar) */}
@@ -555,7 +581,9 @@ export default function DashboardPage() {
           </div>
           {/* Leaderboard Sidebar: sticky on lg in left column; placed after content so it's last on small/medium */}
           <div className="w-full lg:col-start-1 lg:row-start-1 lg:sticky lg:top-24 self-start min-w-0">
-            <LeaderboardSidebar />
+            <div className="lg:pr-2">
+              <LeaderboardSidebar />
+            </div>
           </div>
         </div>
       </div>

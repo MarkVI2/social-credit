@@ -101,21 +101,44 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const userId = (searchParams.get("userId") || "").trim();
+    const usernameParam = (searchParams.get("username") || "").trim();
+    const emailParam = (searchParams.get("email") || "").trim().toLowerCase();
     const limit = Math.min(
       50,
       Math.max(1, parseInt(searchParams.get("limit") || "10", 10))
     );
-    if (!userId)
+    if (!userId && !usernameParam && !emailParam)
       return NextResponse.json(
-        { success: false, message: "userId required" },
+        { success: false, message: "userId, username, or email required" },
         { status: 400 }
       );
 
     const db = await getDatabase();
-    const users = db.collection("userinformation");
+    const users = db.collection<{ username?: string; email?: string }>(
+      "userinformation"
+    );
     const tx = db.collection("transactionHistory");
     const { ObjectId } = await import("mongodb");
-    const user = await users.findOne({ _id: new ObjectId(userId) });
+
+    // Resolve user by id/username/email
+    let user: { username?: string; email?: string } | null = null;
+    if (userId) {
+      // Use ObjectId if valid, otherwise try username/email semantics
+      const isValidObjectId = /^[a-fA-F0-9]{24}$/.test(userId);
+      if (isValidObjectId) {
+        user = await users.findOne({ _id: new ObjectId(userId) });
+      } else if (userId.includes("@")) {
+        user = await users.findOne({ email: userId.toLowerCase() });
+      } else {
+        user = await users.findOne({ username: userId });
+      }
+    }
+    if (!user && usernameParam) {
+      user = await users.findOne({ username: usernameParam });
+    }
+    if (!user && emailParam) {
+      user = await users.findOne({ email: emailParam });
+    }
     if (!user)
       return NextResponse.json(
         { success: false, message: "User not found" },

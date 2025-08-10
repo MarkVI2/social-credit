@@ -31,29 +31,32 @@ export default function AdminPage() {
     } catch {}
   }, []);
 
-  const fetchUsers = useCallback(async (p = 1, q = "") => {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/admin/users?page=${p}&limit=${limit}&query=${encodeURIComponent(
-          q
-        )}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          cache: "no-store",
+  const fetchUsers = useCallback(
+    async (p = 1, q = "") => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/admin/users?page=${p}&limit=${limit}&query=${encodeURIComponent(
+            q
+          )}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            cache: "no-store",
+          }
+        );
+        if (res.status === 401) router.push("/auth/login");
+        const data = await res.json();
+        if (data.success) {
+          setUsers(data.items);
+          setTotal(data.total);
+          setPage(data.page);
         }
-      );
-      if (res.status === 401) router.push("/auth/login");
-      const data = await res.json();
-      if (data.success) {
-        setUsers(data.items);
-        setTotal(data.total);
-        setPage(data.page);
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [limit, router, token]);
+    },
+    [limit, router, token]
+  );
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -113,8 +116,8 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
-  ),
-  [token]
+    ),
+    [token]
   );
 
   return (
@@ -124,8 +127,10 @@ export default function AdminPage() {
     >
       <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-3">
         {header}
-        <div className="grid gap-4 lg:grid-cols-[300px_1fr] lg:items-start mt-4">
-          <div className="w-full lg:col-start-2 max-w-screen-xl mx-auto flex flex-col gap-4">
+        {/* Two-column on lg+: fixed 20rem sidebar + fluid content. Stack on small. */}
+        <div className="grid gap-4 lg:grid-cols-[20rem_1fr] lg:items-start mt-4">
+          {/* Main content first in DOM so on small screens it appears above the sidebar */}
+          <div className="w-full lg:col-start-2 max-w-screen-xl mx-auto flex flex-col gap-4 min-w-0">
             <div
               className="p-3 sm:p-4 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
               style={{
@@ -231,8 +236,11 @@ export default function AdminPage() {
               </button>
             </div>
           </div>
+          {/* Sidebar: sticky on desktop, flows below on mobile/tablet */}
           <div className="w-full lg:col-start-1 lg:row-start-1 lg:sticky lg:top-24 self-start min-w-0">
-            <LeaderboardSidebar />
+            <div className="lg:pr-2">
+              <LeaderboardSidebar />
+            </div>
           </div>
         </div>
       </div>
