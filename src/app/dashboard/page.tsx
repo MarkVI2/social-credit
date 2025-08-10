@@ -37,7 +37,7 @@ export default function DashboardPage() {
       "Operational again, {name}",
       "At your command, {name}",
       "All systems ready, {name}",
-      "Comrade {name}, reporting in",
+      "Comrade {name}, reporting",
       "Proceed, {name}",
       "Control granted, {name}",
     ],
@@ -126,207 +126,277 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="min-h-screen p-3 sm:p-4"
+      className="min-h-screen"
       style={{ background: "var(--background)", color: "var(--foreground)" }}
     >
-      <div className="mx-auto w-full max-w-6xl lg:max-w-none lg:px-4 flex flex-wrap items-start justify-center gap-4 sm:gap-6">
-        {/* Leaderboard Sidebar */}
-        <LeaderboardSidebar />
+      {/* Page container */}
+      <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-3 min-w-0">
+        {/* Layout: single column on sm/md, two-column grid on lg with fixed left rail */}
+        <div className="grid gap-4 lg:grid-cols-[300px_1fr] lg:items-start">
+          {/* Main content (first in DOM; on lg it will occupy the right column) */}
+          <div className="w-full lg:col-start-2 max-w-screen-md mx-auto flex flex-col gap-4 min-w-0">
+            {/* Header (welcome bar) */}
+            <div className="w-full">
+              <div
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                style={{
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  borderColor: "var(--foreground)",
+                }}
+              >
+                {/* Top row: avatar + greeting on the left, logout on the right */}
+                <div className="flex items-center justify-between gap-3 sm:gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                    <button
+                      onClick={() => setShowSettings(true)}
+                      aria-label={`Open settings for ${user.username}`}
+                      className="w-10 h-10 sm:w-9 sm:h-9 rounded-full border-4 flex items-center justify-center font-bold btn-3d"
+                      style={{
+                        background: "var(--background)",
+                        color: "var(--foreground)",
+                        borderColor: "var(--foreground)",
+                      }}
+                    >
+                      {userInitial}
+                    </button>
+                    <div className="min-w-0">
+                      <h1
+                        className="font-heading text-lg sm:text-xl md:text-2xl font-extrabold uppercase tracking-wider truncate"
+                        style={{ color: "var(--accent)" }}
+                      >
+                        {greeting}
+                      </h1>
+                      <p className="font-mono text-xs sm:text-sm mt-1 opacity-80 truncate">
+                        Control panel of the credit collective
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <button
+                      onClick={handleLogout}
+                      className="text-white px-3.5 py-2 sm:py-1.5 rounded-none font-bold border-4 hover:opacity-90 btn-3d"
+                      style={{
+                        background: "var(--accent)",
+                        borderColor: "var(--foreground)",
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-        {/* Header (welcome bar) */}
-        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
-          <div
-            className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
-            style={{
-              background: "var(--background)",
-              color: "var(--foreground)",
-              borderColor: "var(--foreground)",
-            }}
-          >
-            {/* Top row: avatar + greeting on the left, logout on the right */}
-            <div className="flex items-center justify-between gap-3 sm:gap-4">
-              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                <button
-                  onClick={() => setShowSettings(true)}
-                  aria-label={`Open settings for ${user.username}`}
-                  className="w-11 h-11 sm:w-10 sm:h-10 rounded-full bg-[#F5F5DC] dark:bg-[#121212] text-[#28282B] dark:text-[#ededed] border-4 border-[#28282B] dark:border-[#ededed] flex items-center justify-center font-bold btn-3d"
-                >
-                  {userInitial}
-                </button>
-                <div className="min-w-0">
-                  <h1 className="font-heading text-2xl sm:text-3xl font-extrabold uppercase text-[#C62828] tracking-wider truncate">
-                    {greeting}
-                  </h1>
-                  <p className="font-mono text-xs sm:text-sm mt-1 opacity-80 truncate">
-                    Control panel of the credit collective
+            {/* Balance */}
+            <div className="w-full">
+              <div
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                style={{
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  borderColor: "var(--foreground)",
+                }}
+              >
+                <div className="text-center space-y-3">
+                  <h2
+                    className="font-heading text-base sm:text-lg md:text-xl font-extrabold uppercase tracking-wider"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    Current Balance
+                  </h2>
+                  <div
+                    className="text-3xl sm:text-4xl font-bold font-mono tabular-nums"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    KK&thinsp;
+                    {balance.toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                    })}
+                    &thinsp;/-
+                  </div>
+                  <p className="font-mono text-xs sm:text-sm opacity-80">
+                    Social Credit Units
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 sm:gap-4">
-                <button
-                  onClick={handleLogout}
-                  className="bg-[#C62828] text-white px-4 py-2 sm:py-2 rounded-none font-bold border-4 border-[#28282B] dark:border-[#ededed] hover:opacity-90 btn-3d"
+            </div>
+
+            {/* Select User */}
+            <div className="w-full">
+              <div
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                style={{
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  borderColor: "var(--foreground)",
+                }}
+              >
+                <h3
+                  className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-3"
+                  style={{ color: "var(--accent)" }}
                 >
-                  Logout
+                  Select User
+                </h3>
+                <input
+                  list="users"
+                  value={selectedUser}
+                  onChange={(e) => setSelectedUser(e.target.value)}
+                  className="w-full px-2.5 py-2 sm:px-3.5 sm:py-2.5 lg:px-4 lg:py-3 rounded-none focus:outline-none border-4"
+                  style={{
+                    background: "var(--background)",
+                    color: "var(--foreground)",
+                    borderColor: "var(--foreground)",
+                  }}
+                  placeholder="Search by username or email"
+                  required
+                />
+                <datalist id="users">
+                  {users.map((u) => (
+                    <option key={`${u._id}-u`} value={u.username} />
+                  ))}
+                  {users.map((u) => (
+                    <option key={`${u._id}-e`} value={u.email} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+
+            {/* Reason */}
+            <div className="w-full">
+              <div
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                style={{
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  borderColor: "var(--foreground)",
+                }}
+              >
+                <h3
+                  className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-3"
+                  style={{ color: "var(--accent)" }}
+                >
+                  Reason for Transaction
+                </h3>
+                <input
+                  type="text"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  className="w-full px-2.5 py-2 sm:px-3.5 sm:py-2.5 lg:px-4 lg:py-3 rounded-none focus:outline-none border-4"
+                  style={{
+                    background: "var(--background)",
+                    color: "var(--foreground)",
+                    borderColor: "var(--foreground)",
+                  }}
+                  placeholder="Enter reason"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Amount */}
+            <div className="w-full">
+              <div
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                style={{
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  borderColor: "var(--foreground)",
+                }}
+              >
+                <h3
+                  className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-3 text-center"
+                  style={{ color: "var(--accent)" }}
+                >
+                  Amount
+                </h3>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  min="1"
+                  className="w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto block px-2.5 py-2 sm:px-3.5 sm:py-2.5 lg:px-4 lg:py-3 rounded-none focus:outline-none border-4 font-mono text-center"
+                  style={{
+                    background: "var(--background)",
+                    color: "var(--foreground)",
+                    borderColor: "var(--foreground)",
+                  }}
+                  placeholder="Enter credits"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="w-full">
+              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+                <button
+                  onClick={handleRequest}
+                  disabled={!canSubmit}
+                  aria-disabled={!canSubmit}
+                  className="flex-1 py-2 sm:py-2.5 px-3 sm:px-3.5 rounded-none font-bold border-4 hover:opacity-90 btn-3d disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none"
+                  style={{
+                    background: "var(--background)",
+                    color: "var(--foreground)",
+                    borderColor: "var(--foreground)",
+                  }}
+                >
+                  Request
+                </button>
+                <button
+                  onClick={handleSend}
+                  disabled={!canSubmit}
+                  aria-disabled={!canSubmit}
+                  className="flex-1 text-white py-2 sm:py-2.5 px-3 sm:px-3.5 rounded-none font-bold border-4 hover:opacity-90 btn-3d disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none"
+                  style={{
+                    background: "var(--accent)",
+                    borderColor: "var(--foreground)",
+                  }}
+                >
+                  Send
                 </button>
               </div>
+              {!canSubmit && (
+                <p className="mt-1.5 font-mono text-[11px] opacity-80">
+                  Hint: select a valid user, enter a reason, and an amount
+                  greater than 0.
+                </p>
+              )}
+              {showSettings && (
+                <SettingsModal
+                  user={user}
+                  onClose={() => setShowSettings(false)}
+                />
+              )}
             </div>
-          </div>
-        </div>
 
-        {/* Balance */}
-        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
-          <div
-            className="p-4 sm:p-6 lg:p-8 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
-            style={{
-              background: "var(--background)",
-              color: "var(--foreground)",
-              borderColor: "var(--foreground)",
-            }}
-          >
-            <div className="text-center space-y-4">
-              <h2 className="font-heading text-xl font-extrabold uppercase text-[#C62828] tracking-wider">
-                Current Balance
-              </h2>
-              <div className="text-4xl sm:text-5xl font-bold text-[#C62828] font-mono tabular-nums">
-                ₹{balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            {/* Recent Transactions */}
+            <div className="w-full">
+              <div
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                style={{
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  borderColor: "var(--foreground)",
+                }}
+              >
+                <h3
+                  className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-3"
+                  style={{ color: "var(--accent)" }}
+                >
+                  Recent Transactions
+                </h3>
+                <div className="text-center py-6">
+                  <p className="font-mono opacity-80">
+                    No transactions yet. Start by sending or receiving money!
+                  </p>
+                </div>
               </div>
-              <p className="font-mono text-xs sm:text-sm opacity-80">
-                Social Credit Units
-              </p>
             </div>
           </div>
-        </div>
-
-        {/* Select User */}
-        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
-          <div
-            className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
-            style={{
-              background: "var(--background)",
-              color: "var(--foreground)",
-              borderColor: "var(--foreground)",
-            }}
-          >
-            <h3 className="font-heading text-lg font-extrabold uppercase text-[#C62828] tracking-wider mb-4">
-              Select User
-            </h3>
-            <input
-              list="users"
-              value={selectedUser}
-              onChange={(e) => setSelectedUser(e.target.value)}
-              className="w-full px-2.5 py-2 sm:px-3 sm:py-2.5 lg:px-4 lg:py-3 bg-[#F5F5DC] dark:bg-[#1d1d1d] border-4 border-[#28282B] dark:border-[#ededed] rounded-none text-[#28282B] dark:text-[#ededed] placeholder-[#28282B]/60 dark:placeholder-[#ededed]/60 focus:outline-none"
-              placeholder="Search by username or email"
-              required
-            />
-            <datalist id="users">
-              {users.map((u) => (
-                <option key={`${u._id}-u`} value={u.username} />
-              ))}
-              {users.map((u) => (
-                <option key={`${u._id}-e`} value={u.email} />
-              ))}
-            </datalist>
-          </div>
-        </div>
-
-        {/* Reason */}
-        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
-          <div
-            className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
-            style={{
-              background: "var(--background)",
-              color: "var(--foreground)",
-              borderColor: "var(--foreground)",
-            }}
-          >
-            <h3 className="font-heading text-lg font-extrabold uppercase text-[#C62828] tracking-wider mb-4">
-              Reason for Transaction
-            </h3>
-            <input
-              type="text"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full px-2.5 py-2 sm:px-3 sm:py-2.5 lg:px-4 lg:py-3 bg-[#F5F5DC] dark:bg-[#1d1d1d] border-4 border-[#28282B] dark:border-[#ededed] rounded-none text-[#28282B] dark:text-[#ededed] placeholder-[#28282B]/60 dark:placeholder-[#ededed]/60 focus:outline-none"
-              placeholder="Enter reason"
-              required
-            />
-          </div>
-        </div>
-
-        {/* Amount */}
-        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
-          <div
-            className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
-            style={{
-              background: "var(--background)",
-              color: "var(--foreground)",
-              borderColor: "var(--foreground)",
-            }}
-          >
-            <h3 className="font-heading text-lg font-extrabold uppercase text-[#C62828] tracking-wider mb-4 text-center">
-              Amount
-            </h3>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              min="1"
-              className="w-full max-w-xs mx-auto block px-2.5 py-2 sm:px-3 sm:py-2.5 lg:px-4 lg:py-3 bg-[#F5F5DC] dark:bg-[#1d1d1d] border-4 border-[#28282B] dark:border-[#ededed] rounded-none text-[#28282B] dark:text-[#ededed] placeholder-[#28282B]/60 dark:placeholder-[#ededed]/60 focus:outline-none font-mono text-center"
-              placeholder="Enter credits"
-              required
-            />
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
-          <div className="flex gap-3 sm:gap-4">
-            <button
-              onClick={handleRequest}
-              disabled={!canSubmit}
-              aria-disabled={!canSubmit}
-              className="flex-1 bg-[#F5F5DC] dark:bg-[#121212] text-[#28282B] dark:text-[#ededed] py-2.5 sm:py-3 px-3 sm:px-4 rounded-none font-bold border-4 border-[#28282B] dark:border-[#ededed] hover:opacity-90 btn-3d disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none"
-            >
-              Request
-            </button>
-            <button
-              onClick={handleSend}
-              disabled={!canSubmit}
-              aria-disabled={!canSubmit}
-              className="flex-1 bg-[#C62828] text-white py-2.5 sm:py-3 px-3 sm:px-4 rounded-none font-bold border-4 border-[#28282B] dark:border-[#ededed] hover:opacity-90 btn-3d disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none"
-            >
-              Send
-            </button>
-          </div>
-          {!canSubmit && (
-            <p className="mt-2 font-mono text-xs opacity-80">
-              Hint: select a valid user, enter a reason, and an amount greater
-              than 0.
-            </p>
-          )}
-          {showSettings && (
-            <SettingsModal user={user} onClose={() => setShowSettings(false)} />
-          )}
-        </div>
-        {/* Recent Transactions */}
-        <div className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5">
-          <div
-            className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
-            style={{
-              background: "var(--background)",
-              color: "var(--foreground)",
-              borderColor: "var(--foreground)",
-            }}
-          >
-            <h3 className="font-heading text-lg font-extrabold uppercase text-[#C62828] tracking-wider mb-4">
-              Recent Transactions
-            </h3>
-            <div className="text-center py-8">
-              <p className="font-mono opacity-80">
-                No transactions yet. Start by sending or receiving money!
-              </p>
-            </div>
+          {/* Leaderboard Sidebar: sticky on lg in left column; placed after content so it's last on small/medium */}
+          <div className="w-full lg:col-start-1 lg:row-start-1 lg:sticky lg:top-24 self-start min-w-0">
+            <LeaderboardSidebar />
           </div>
         </div>
       </div>

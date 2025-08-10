@@ -30,6 +30,13 @@
   --accent: #c62828;
 }
 
+/* Class-based light theme override to force light even if OS prefers dark */
+.light {
+  --background: #f5f5dc;
+  --foreground: #28282b;
+  --accent: #c62828;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

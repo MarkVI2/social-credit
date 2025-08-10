@@ -46,7 +46,7 @@ export default function LeaderboardSidebar() {
 
   return (
     <aside
-      className="w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5 shadow-[6px_6px_0_0_#28282B]"
+      className="w-full sm:w-full md:w-72 lg:w-80 xl:w-96 shrink-0 p-3 sm:p-4 lg:p-5 shadow-[6px_6px_0_0_#28282B]"
       style={{
         borderColor: "var(--foreground)",
         background: "var(--background)",
@@ -146,11 +146,12 @@ function toSatiricalName(name: string) {
 function RankBadge({ rank, isTop }: { rank: number; isTop: boolean }) {
   return (
     <div
-      className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border-2 ${
-        isTop
-          ? "border-[#C62828] bg-[#C62828] text-white"
-          : "border-[#28282B] dark:border-[#ededed] bg-[#F5F5DC] dark:bg-[#1d1d1d]"
-      } font-mono font-bold`}
+      className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border-2 font-mono font-bold"
+      style={{
+        borderColor: isTop ? "#C62828" : "var(--foreground)",
+        background: isTop ? "#C62828" : "var(--background)",
+        color: isTop ? "#ffffff" : "var(--foreground)",
+      }}
       aria-label={`Rank ${rank}`}
     >
       {rank}
@@ -179,15 +180,20 @@ function Avatar({
 
   return (
     <div
-      className={`relative w-9 h-9 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2 ${
-        isTop ? "border-[#C62828]" : "border-[#28282B] dark:border-[#ededed]"
-      }`}
+      className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2"
+      style={{ borderColor: isTop ? "#C62828" : "var(--foreground)" }}
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt={name} className="w-full h-full object-cover" />
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-[#F5F5DC] dark:bg-[#1d1d1d] text-[#28282B] dark:text-[#ededed] font-semibold">
+        <div
+          className="w-full h-full flex items-center justify-center font-semibold"
+          style={{
+            background: "var(--background)",
+            color: "var(--foreground)",
+          }}
+        >
           {initials}
         </div>
       )}

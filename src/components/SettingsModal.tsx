@@ -29,8 +29,14 @@ export default function SettingsModal({ user, onClose }: Props) {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") root.classList.add("dark");
-    else root.classList.remove("dark");
+    // Ensure we always set one class and remove the other to avoid conflicts
+    if (theme === "dark") {
+      root.classList.add("dark");
+      root.classList.remove("light");
+    } else {
+      root.classList.add("light");
+      root.classList.remove("dark");
+    }
     // Persist to cookie for SSR and to localStorage for backward compatibility
     try {
       localStorage.setItem("theme", theme);
@@ -60,7 +66,14 @@ export default function SettingsModal({ user, onClose }: Props) {
       />
 
       {/* Panel */}
-      <div className="relative z-10 w-full max-w-lg border-4 border-[#28282B] dark:border-[#ededed] bg-[#F5F5DC] dark:bg-[#121212] p-5 sm:p-6 shadow-[10px_10px_0_0_#28282B] text-[#28282B] dark:text-[#ededed]">
+      <div
+        className="relative z-10 w-full max-w-lg border-4 p-5 sm:p-6 shadow-[10px_10px_0_0_#28282B]"
+        style={{
+          background: "var(--background)",
+          color: "var(--foreground)",
+          borderColor: "var(--foreground)",
+        }}
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="font-heading text-xl font-extrabold uppercase text-[#C62828] tracking-wider">
@@ -72,7 +85,12 @@ export default function SettingsModal({ user, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-[#F5F5DC] dark:bg-[#121212] text-[#28282B] dark:text-[#ededed] border-4 border-[#28282B] dark:border-[#ededed] flex items-center justify-center font-bold btn-3d"
+            className="w-9 h-9 rounded-full flex items-center justify-center font-bold btn-3d border-4"
+            style={{
+              background: "var(--background)",
+              color: "var(--foreground)",
+              borderColor: "var(--foreground)",
+            }}
             aria-label="Close"
           >
             ✕
@@ -80,7 +98,13 @@ export default function SettingsModal({ user, onClose }: Props) {
         </div>
 
         <div className="mt-6 space-y-4">
-          <div className="border-4 border-[#28282B] p-4 bg-white/60">
+          <div
+            className="border-4 p-4"
+            style={{
+              borderColor: "var(--foreground)",
+              background: "color-mix(in oklab, var(--background) 70%, white)",
+            }}
+          >
             <h3 className="font-heading text-sm uppercase tracking-wider text-[#C62828] font-bold">
               Profile
             </h3>
@@ -89,7 +113,13 @@ export default function SettingsModal({ user, onClose }: Props) {
             </p>
           </div>
 
-          <div className="border-4 border-[#28282B] dark:border-[#ededed] p-4 bg-white/60 dark:bg-[#1d1d1d]">
+          <div
+            className="border-4 p-4"
+            style={{
+              borderColor: "var(--foreground)",
+              background: "color-mix(in oklab, var(--background) 70%, white)",
+            }}
+          >
             <h3 className="font-heading text-sm uppercase tracking-wider text-[#C62828] font-bold">
               Theme
             </h3>

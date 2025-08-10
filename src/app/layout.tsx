@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Oswald, JetBrains_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
@@ -24,6 +24,12 @@ export const metadata: Metadata = {
   description: "Secure digital wallet and currency exchange platform",
 };
 
+// Ensure proper mobile scaling so Tailwind breakpoints and responsive widths behave on real devices
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -35,7 +41,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={theme === "dark" ? "dark" : undefined}
+      className={theme === "dark" ? "dark" : "light"}
       suppressHydrationWarning
     >
       <body
