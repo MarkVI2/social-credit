@@ -6,6 +6,10 @@ export async function POST(request: NextRequest) {
   try {
     const body: UserInput = await request.json();
 
+    // Normalize inputs
+    body.username = (body.username ?? "").trim();
+    body.email = (body.email ?? "").trim().toLowerCase();
+
     // Validate input
     if (
       !body.username ||

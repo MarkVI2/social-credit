@@ -27,7 +27,7 @@ export class UserService {
     try {
       const collection = await this.getCollection();
 
-      // Check if username already exists
+      // Check if username already exists (exact match)
       const existingUsername = await collection.findOne({
         username: userData.username,
       });
@@ -36,7 +36,9 @@ export class UserService {
       }
 
       // Check if email already exists
-      const existingEmail = await collection.findOne({ email: userData.email });
+      const existingEmail = await collection.findOne({
+        email: userData.email.toLowerCase(),
+      });
       if (existingEmail) {
         return { success: false, message: "Email already exists" };
       }
@@ -47,7 +49,7 @@ export class UserService {
       // Create user object
       const user: Omit<User, "_id"> = {
         username: userData.username,
-        email: userData.email,
+        email: userData.email.toLowerCase(),
         password: hashedPassword,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -80,7 +82,7 @@ export class UserService {
 
       // Find user by username or email
       const user = await collection.findOne({
-        $or: [{ username: identifier }, { email: identifier }],
+        $or: [{ username: identifier }, { email: identifier.toLowerCase() }],
       });
 
       if (!user) {

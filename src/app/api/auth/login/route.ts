@@ -6,8 +6,15 @@ export async function POST(request: NextRequest) {
   try {
     const body: LoginInput = await request.json();
 
+    // Normalize inputs
+    const rawIdentifier = (body.identifier ?? "").trim();
+    const rawPassword = body.password ?? "";
+    const isEmail = rawIdentifier.includes("@");
+    const identifier = isEmail ? rawIdentifier.toLowerCase() : rawIdentifier;
+    const password = rawPassword;
+
     // Validate input
-    if (!body.identifier || !body.password) {
+    if (!identifier || !password) {
       return NextResponse.json(
         { success: false, message: "Username/email and password are required" },
         { status: 400 }
@@ -15,10 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate user
-    const result = await UserService.authenticateUser(
-      body.identifier,
-      body.password
-    );
+    const result = await UserService.authenticateUser(identifier, password);
 
     if (!result.success) {
       return NextResponse.json(
