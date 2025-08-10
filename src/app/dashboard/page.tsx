@@ -11,6 +11,7 @@ interface User {
   username: string;
   email: string;
   createdAt: string;
+  credits?: number;
 }
 
 export default function DashboardPage() {
@@ -19,7 +20,6 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState<number>(0);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
-  const [amount, setAmount] = useState<number>(0);
   const [reason, setReason] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
 
@@ -60,7 +60,6 @@ export default function DashboardPage() {
     [users, selectedUser]
   );
   const isValidUser = !!matchedUser;
-  const isValidAmount = true; // fixed amount = 2, so always valid
   const isValidReason = reason.trim().length > 0;
   const canSubmit = isValidUser && isValidReason;
 
@@ -72,14 +71,17 @@ export default function DashboardPage() {
       const res = await fetch("/api/users", { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
-        const fresh = data.users.find(
-          (u: any) => u.username === user.username || u.email === user.email
+        const fresh = (data.users as User[]).find(
+          (u) => u.username === user.username || u.email === user.email
         );
         if (fresh && typeof fresh.credits === "number") {
           setBalance(Math.trunc(fresh.credits));
-          const currentCredits = (user as any)?.credits;
+          const currentCredits = user?.credits;
           if (currentCredits !== fresh.credits) {
-            const stored = { ...user, credits: fresh.credits } as any;
+            const stored: User & { credits: number } = {
+              ...user,
+              credits: fresh.credits,
+            } as User & { credits: number };
             try {
               localStorage.setItem("currentUser", JSON.stringify(stored));
             } catch {}
@@ -116,14 +118,17 @@ export default function DashboardPage() {
           setUsers(data.users);
           // If current user exists, sync balance from API
           if (user) {
-            const fresh = data.users.find(
-              (u: any) => u.username === user.username || u.email === user.email
+            const fresh = (data.users as User[]).find(
+              (u) => u.username === user.username || u.email === user.email
             );
             if (fresh && typeof fresh.credits === "number") {
               setBalance(Math.trunc(fresh.credits));
-              const currentCredits = (user as any)?.credits;
+              const currentCredits = user?.credits;
               if (currentCredits !== fresh.credits) {
-                const stored = { ...user, credits: fresh.credits } as any;
+                const stored: User & { credits: number } = {
+                  ...user,
+                  credits: fresh.credits,
+                } as User & { credits: number };
                 try {
                   localStorage.setItem("currentUser", JSON.stringify(stored));
                 } catch {}
@@ -141,8 +146,7 @@ export default function DashboardPage() {
     if (user) {
       refreshCurrentUser();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.username, user?.email]);
+  }, [user]);
 
   // Periodically refresh balance every 1 minute
   useEffect(() => {
@@ -151,8 +155,7 @@ export default function DashboardPage() {
       refreshCurrentUser();
     }, 60 * 1000);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.username, user?.email]);
+  }, [user]);
 
   const handleSend = async () => {
     const target = users.find(
@@ -183,17 +186,17 @@ export default function DashboardPage() {
       console.error("Send error", e);
     }
   };
-  const handleRequest = () => {
-    const target = users.find(
-      (u) => u.username === selectedUser || u.email === selectedUser
-    );
-    console.log(
-      "Request",
-      amount,
-      "credits from",
-      target?.username ?? selectedUser
-    );
-  };
+  // const handleRequest = () => {
+  //   const target = users.find(
+  //     (u) => u.username === selectedUser || u.email === selectedUser
+  //   );
+  //   console.log(
+  //     "Request",
+  //     amount,
+  //     "credits from",
+  //     target?.username ?? selectedUser
+  //   );
+  // };
 
   const handleLogout = () => {
     try {

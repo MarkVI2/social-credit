@@ -34,8 +34,9 @@ export default function LeaderboardSidebar() {
         } else {
           setError(json.message || "Failed to load leaderboard");
         }
-      } catch (e: any) {
-        if (mounted) setError(e.message ?? String(e));
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (mounted) setError(msg);
       } finally {
         if (mounted && showLoading) setLoading(false);
       }

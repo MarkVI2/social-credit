@@ -19,7 +19,6 @@ if (!smtpHost && /@gmail\.com$/i.test(smtpUser)) {
 
 if (!smtpUser || !smtpPass) {
   // Provide a clear runtime error to help configuration
-  // eslint-disable-next-line no-console
   console.error(
     "Email is not configured. Please set SMTP_USER and SMTP_PASS (for Gmail: use an App Password)."
   );

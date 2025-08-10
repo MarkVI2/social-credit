@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/mongodb";
+import { User } from "@/types/user";
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
       );
     }
     const db = await getDatabase();
-    const coll = db.collection("userinformation");
+    const coll = db.collection<User>("userinformation");
 
     const user = await coll.findOne({ verificationToken: token });
     if (!user) {
@@ -23,9 +24,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Check expiry (24h window stored at signup)
-    const expiresAt = (user as any).verificationTokenExpiresAt as
-      | Date
-      | undefined;
+    const expiresAt = user.verificationTokenExpiresAt;
     if (!expiresAt || new Date(expiresAt).getTime() < Date.now()) {
       // Token expired; clear token to prevent reuse
       await coll.updateOne(

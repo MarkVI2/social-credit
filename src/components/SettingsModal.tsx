@@ -181,7 +181,7 @@ function ChangePasswordForm({ email }: { email: string }) {
       if (data.success)
         setMsg("Password updated. A confirmation email has been sent.");
       else setMsg(data.message || "Failed to update password");
-    } catch (e) {
+    } catch {
       setMsg("Network error. Try again later.");
     }
     setLoading(false);

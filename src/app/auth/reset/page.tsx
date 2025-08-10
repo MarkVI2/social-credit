@@ -12,8 +12,8 @@ export default function ResetPage() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setMsg("");
     if (password !== confirm) {
       setMsg("Passwords do not match");

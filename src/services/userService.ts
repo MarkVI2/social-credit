@@ -123,8 +123,14 @@ export class UserService {
       }
 
       // Return user without password
-      const { password: _, ...userWithoutPassword } = user as any;
-      if (typeof (userWithoutPassword as any).credits !== "number") {
+      const { password: _omit, ...userWithoutPassword } = user as Omit<
+        User,
+        "password"
+      > & { password: string };
+      if (
+        typeof (userWithoutPassword as { credits?: number }).credits !==
+        "number"
+      ) {
         // Backfill credits for legacy users
         await (
           await this.getCollection()
@@ -132,13 +138,13 @@ export class UserService {
           { _id: user._id },
           { $set: { credits: 20, updatedAt: new Date() } }
         );
-        (userWithoutPassword as any).credits = 20;
+        (userWithoutPassword as { credits?: number }).credits = 20;
       }
 
       return {
         success: true,
         message: "Authentication successful",
-        user: userWithoutPassword,
+        user: userWithoutPassword as Omit<User, "password">,
       };
     } catch (error) {
       console.error("Error authenticating user:", error);

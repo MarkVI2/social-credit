@@ -147,8 +147,8 @@ export default function LoginPage() {
           {showForgot && (
             <div className="mt-3 border-4 border-[#28282B] bg-white/60 p-3">
               <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
+                onSubmit={async (event) => {
+                  event.preventDefault();
                   setFpMsg("");
                   try {
                     const res = await fetch("/api/auth/forgot", {
@@ -160,7 +160,7 @@ export default function LoginPage() {
                     setFpMsg(
                       "If an account exists, a reset link has been sent to the email on file."
                     );
-                  } catch (e) {
+                  } catch {
                     setFpMsg("Failed to send reset link. Try again later.");
                   }
                 }}
