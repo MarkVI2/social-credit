@@ -108,9 +108,7 @@ export default function SettingsModal({ user, onClose }: Props) {
             <h3 className="font-heading text-sm uppercase tracking-wider text-[#C62828] font-bold">
               Profile
             </h3>
-            <p className="font-mono text-xs opacity-80 mt-2">
-              Profile preferences coming soon.
-            </p>
+            <ChangePasswordForm email={user?.email || ""} />
           </div>
 
           <div
@@ -151,5 +149,83 @@ export default function SettingsModal({ user, onClose }: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+function ChangePasswordForm({ email }: { email: string }) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMsg("");
+    if (next !== confirm) {
+      setMsg("New passwords do not match");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: current,
+          newPassword: next,
+          email,
+        }),
+      });
+      const data = await res.json();
+      if (data.success)
+        setMsg("Password updated. A confirmation email has been sent.");
+      else setMsg(data.message || "Failed to update password");
+    } catch (e) {
+      setMsg("Network error. Try again later.");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="mt-3 space-y-2">
+      <label className="block text-xs font-semibold">Current Password</label>
+      <input
+        type="password"
+        value={current}
+        onChange={(e) => setCurrent(e.target.value)}
+        className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none"
+        placeholder="Enter current password"
+        required
+      />
+      <label className="block text-xs font-semibold">New Password</label>
+      <input
+        type="password"
+        value={next}
+        onChange={(e) => setNext(e.target.value)}
+        className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none"
+        placeholder="Enter new password"
+        required
+      />
+      <label className="block text-xs font-semibold">
+        Confirm New Password
+      </label>
+      <input
+        type="password"
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none"
+        placeholder="Confirm new password"
+        required
+      />
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full bg-[#C62828] text-white py-2 px-4 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 disabled:opacity-60 btn-3d"
+      >
+        {loading ? "Updating…" : "Update Password"}
+      </button>
+      {msg && <p className="font-mono text-xs mt-1">{msg}</p>}
+    </form>
   );
 }

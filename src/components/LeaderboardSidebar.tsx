@@ -20,13 +20,13 @@ export default function LeaderboardSidebar() {
 
   useEffect(() => {
     let mounted = true;
-    setLoading(true);
-    fetch("/api/leaderboard")
-      .then((res) => {
+
+    const fetchLeaderboard = async (showLoading = false) => {
+      try {
+        if (showLoading) setLoading(true);
+        const res = await fetch("/api/leaderboard", { cache: "no-store" });
         if (!res.ok) throw new Error("Network error");
-        return res.json();
-      })
-      .then((json) => {
+        const json = await res.json();
         if (!mounted) return;
         if (json.success) {
           setData(json.users as LeaderUser[]);
@@ -34,11 +34,21 @@ export default function LeaderboardSidebar() {
         } else {
           setError(json.message || "Failed to load leaderboard");
         }
-      })
-      .catch((e) => mounted && setError(e.message))
-      .finally(() => mounted && setLoading(false));
+      } catch (e: any) {
+        if (mounted) setError(e.message ?? String(e));
+      } finally {
+        if (mounted && showLoading) setLoading(false);
+      }
+    };
+
+    // Initial fetch with loading state
+    fetchLeaderboard(true);
+    // Refresh every 5 minutes without toggling loading to avoid flicker
+    const interval = setInterval(() => fetchLeaderboard(false), 60 * 1000);
+
     return () => {
       mounted = false;
+      clearInterval(interval);
     };
   }, []);
 

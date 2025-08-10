@@ -10,6 +10,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [fpIdentifier, setFpIdentifier] = useState("");
+  const [fpMsg, setFpMsg] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +129,66 @@ export default function LoginPage() {
               Don&apos;t have an account? Sign up
             </Link>
           </div>
+
+          {/* Forgot Password */}
+          <div className="text-center mt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowForgot((s) => !s);
+                setFpMsg("");
+              }}
+              className="text-xs underline underline-offset-2 hover:opacity-80"
+            >
+              {showForgot ? "Hide Forgot Password" : "Forgot Password?"}
+            </button>
+          </div>
+
+          {showForgot && (
+            <div className="mt-3 border-4 border-[#28282B] bg-white/60 p-3">
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setFpMsg("");
+                  try {
+                    const res = await fetch("/api/auth/forgot", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ identifier: fpIdentifier }),
+                    });
+                    await res.json();
+                    setFpMsg(
+                      "If an account exists, a reset link has been sent to the email on file."
+                    );
+                  } catch (e) {
+                    setFpMsg("Failed to send reset link. Try again later.");
+                  }
+                }}
+                className="space-y-2"
+              >
+                <label className="block text-xs font-semibold text-left">
+                  Username or Email
+                </label>
+                <input
+                  type="text"
+                  value={fpIdentifier}
+                  onChange={(e) => setFpIdentifier(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none"
+                  placeholder="Enter username or email"
+                  required
+                />
+                <button
+                  type="submit"
+                  className="w-full bg-[#C62828] text-white py-2 px-4 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 btn-3d"
+                >
+                  Send Reset Link
+                </button>
+                {fpMsg && (
+                  <p className="font-mono text-xs mt-1 text-left">{fpMsg}</p>
+                )}
+              </form>
+            </div>
+          )}
         </div>
       </div>
     </div>

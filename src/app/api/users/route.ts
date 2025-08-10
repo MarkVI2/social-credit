@@ -7,7 +7,7 @@ export async function GET() {
     const db = await getDatabase();
     const users = await db
       .collection<User>("userinformation")
-      .find({}, { projection: { _id: 1, username: 1, email: 1 } })
+      .find({}, { projection: { _id: 1, username: 1, email: 1, credits: 1 } })
       .toArray();
 
     return NextResponse.json({ success: true, users });

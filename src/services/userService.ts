@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import { getDatabase } from "@/lib/mongodb";
 import { User, UserInput } from "@/types/user";
+import crypto from "crypto";
+import { sendVerificationEmail } from "./mailService";
 
 export class UserService {
   private static async getCollection() {
@@ -47,16 +49,27 @@ export class UserService {
       const hashedPassword = await this.hashPassword(userData.password);
 
       // Create user object
+      const token = crypto.randomBytes(24).toString("hex");
       const user: Omit<User, "_id"> = {
         username: userData.username,
         email: userData.email.toLowerCase(),
         password: hashedPassword,
+        credits: 20,
+        emailVerified: false,
+        verificationToken: token,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
       // Insert user into database
       const result = await collection.insertOne(user);
+
+      // Send verification email (best effort)
+      try {
+        await sendVerificationEmail(user.email, token);
+      } catch (e) {
+        console.error("Failed to send verification email:", e);
+      }
 
       return {
         success: true,
@@ -100,7 +113,17 @@ export class UserService {
       }
 
       // Return user without password
-      const { password: _, ...userWithoutPassword } = user;
+      const { password: _, ...userWithoutPassword } = user as any;
+      if (typeof (userWithoutPassword as any).credits !== "number") {
+        // Backfill credits for legacy users
+        await (
+          await this.getCollection()
+        ).updateOne(
+          { _id: user._id },
+          { $set: { credits: 20, updatedAt: new Date() } }
+        );
+        (userWithoutPassword as any).credits = 20;
+      }
 
       return {
         success: true,

@@ -1,24 +1,25 @@
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/lib/mongodb";
 
-// Returns top 5 users sorted by kollaborationKredits (desc)
+// Returns top 5 users sorted by credits (desc)
 export async function GET() {
   try {
     const db = await getDatabase();
     const pipeline = [
       {
-        $addFields: {
-          kollaborationKreditsSafe: { $ifNull: ["$kollaborationKredits", 0] },
-        },
+        $addFields: { creditsSafe: { $ifNull: ["$credits", 0] } },
       },
-      { $sort: { kollaborationKreditsSafe: -1 } },
+      { $sort: { creditsSafe: -1 } },
       { $limit: 5 },
       {
         $project: {
           _id: 1,
           name: { $ifNull: ["$name", "$username"] },
           handle: { $ifNull: ["$handle", "$username"] },
-          kollaborationKredits: "$kollaborationKreditsSafe",
+          // Keep field name for UI compatibility
+          kollaborationKredits: "$creditsSafe",
+          // Also include explicit credits field for future use
+          credits: "$creditsSafe",
           avatarUrl: 1,
         },
       },

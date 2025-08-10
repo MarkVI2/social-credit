@@ -5,8 +5,13 @@ export interface User {
   username: string;
   email: string;
   password: string; // This will be the hashed password
+  credits: number; // Current balance of credits
   createdAt: Date;
   updatedAt: Date;
+  emailVerified?: boolean;
+  verificationToken?: string;
+  resetToken?: string;
+  resetTokenExpiresAt?: Date;
 }
 
 export interface UserInput {

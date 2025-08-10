@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
 import SettingsModal from "@/components/SettingsModal";
+import { IconLogout } from "@tabler/icons-react";
 
 interface User {
   _id: string;
@@ -15,7 +16,7 @@ interface User {
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [balance] = useState(1000.0); // Mock balance for now
+  const [balance, setBalance] = useState<number>(0);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [amount, setAmount] = useState<number>(0);
@@ -59,9 +60,37 @@ export default function DashboardPage() {
     [users, selectedUser]
   );
   const isValidUser = !!matchedUser;
-  const isValidAmount = Number.isFinite(amount) && amount > 0;
+  const isValidAmount = true; // fixed amount = 2, so always valid
   const isValidReason = reason.trim().length > 0;
-  const canSubmit = isValidUser && isValidAmount && isValidReason;
+  const canSubmit = isValidUser && isValidReason;
+
+  // Refresh current user from DB and sync credits
+  const refreshCurrentUser = async () => {
+    try {
+      if (!user) return;
+      // Query users API and find the current user
+      const res = await fetch("/api/users", { cache: "no-store" });
+      const data = await res.json();
+      if (data.success) {
+        const fresh = data.users.find(
+          (u: any) => u.username === user.username || u.email === user.email
+        );
+        if (fresh && typeof fresh.credits === "number") {
+          setBalance(Math.trunc(fresh.credits));
+          const currentCredits = (user as any)?.credits;
+          if (currentCredits !== fresh.credits) {
+            const stored = { ...user, credits: fresh.credits } as any;
+            try {
+              localStorage.setItem("currentUser", JSON.stringify(stored));
+            } catch {}
+            setUser(stored);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to refresh user", e);
+    }
+  };
 
   useEffect(() => {
     // Try to load current user from localStorage (temporary client-side session)
@@ -69,33 +98,90 @@ export default function DashboardPage() {
       const stored =
         typeof window !== "undefined" && localStorage.getItem("currentUser");
       if (stored) {
-        setUser(JSON.parse(stored));
+        const u = JSON.parse(stored);
+        setUser(u);
+        if (typeof u.credits === "number") setBalance(Math.trunc(u.credits));
         return;
       }
     } catch {}
-    // Fallback mock (remove when real auth is wired)
-    setUser({
-      _id: "mock-id",
-      username: "johndoe",
-      email: "john.doe@mahindrauniversity.edu.in",
-      createdAt: new Date().toISOString(),
-    });
-  }, []);
+    // No fallback mock; redirect to login if no user found
+    router.push("/auth/login");
+  }, [router]);
 
   useEffect(() => {
-    fetch("/api/users")
+    fetch("/api/users", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) setUsers(data.users);
+        if (data.success) {
+          setUsers(data.users);
+          // If current user exists, sync balance from API
+          if (user) {
+            const fresh = data.users.find(
+              (u: any) => u.username === user.username || u.email === user.email
+            );
+            if (fresh && typeof fresh.credits === "number") {
+              setBalance(Math.trunc(fresh.credits));
+              const currentCredits = (user as any)?.credits;
+              if (currentCredits !== fresh.credits) {
+                const stored = { ...user, credits: fresh.credits } as any;
+                try {
+                  localStorage.setItem("currentUser", JSON.stringify(stored));
+                } catch {}
+                setUser(stored);
+              }
+            }
+          }
+        }
       })
       .catch((err) => console.error("Error fetching users:", err));
-  }, []);
+  }, [user?.username, user?.email]);
 
-  const handleSend = () => {
+  // Once user is set, do an initial refresh to ensure balance is up-to-date
+  useEffect(() => {
+    if (user) {
+      refreshCurrentUser();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.username, user?.email]);
+
+  // Periodically refresh balance every 1 minute
+  useEffect(() => {
+    if (!user) return;
+    const id = setInterval(() => {
+      refreshCurrentUser();
+    }, 60 * 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.username, user?.email]);
+
+  const handleSend = async () => {
     const target = users.find(
       (u) => u.username === selectedUser || u.email === selectedUser
     );
-    console.log("Send", amount, "credits to", target?.username ?? selectedUser);
+    if (!user || !target) return;
+    try {
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: user.username,
+          to: target.username,
+          reason,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Reduce local balance by 2 and clear reason
+        setBalance((b) => Math.max(0, Math.trunc(b) - 2));
+        setReason("");
+        // Refresh current user credits from server
+        await refreshCurrentUser();
+      } else {
+        console.error(data.message);
+      }
+    } catch (e) {
+      console.error("Send error", e);
+    }
   };
   const handleRequest = () => {
     const target = users.find(
@@ -146,7 +232,7 @@ export default function DashboardPage() {
                 }}
               >
                 {/* Top row: avatar + greeting on the left, logout on the right */}
-                <div className="flex items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap">
                   <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                     <button
                       onClick={() => setShowSettings(true)}
@@ -160,7 +246,7 @@ export default function DashboardPage() {
                     >
                       {userInitial}
                     </button>
-                    <div className="min-w-0">
+                    <div className="min-w-0 pr-10 sm:pr-0">
                       <h1
                         className="font-heading text-lg sm:text-xl md:text-2xl font-extrabold uppercase tracking-wider truncate"
                         style={{ color: "var(--accent)" }}
@@ -175,13 +261,14 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3 sm:gap-4">
                     <button
                       onClick={handleLogout}
-                      className="text-white px-3.5 py-2 sm:py-1.5 rounded-none font-bold border-4 hover:opacity-90 btn-3d"
+                      aria-label="Logout"
+                      className="text-white px-3.5 py-2 sm:py-1.5 rounded-none font-bold border-4 hover:opacity-90 btn-3d flex items-center justify-center"
                       style={{
                         background: "var(--accent)",
                         borderColor: "var(--foreground)",
                       }}
                     >
-                      Logout
+                      <IconLogout size={20} stroke={2} />
                     </button>
                   </div>
                 </div>
@@ -209,14 +296,10 @@ export default function DashboardPage() {
                     className="text-3xl sm:text-4xl font-bold font-mono tabular-nums"
                     style={{ color: "var(--accent)" }}
                   >
-                    KK&thinsp;
-                    {balance.toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                    })}
-                    &thinsp;/-
+                    {Math.trunc(balance).toLocaleString("en-IN")}
                   </div>
                   <p className="font-mono text-xs sm:text-sm opacity-80">
-                    Social Credit Units
+                    Current Balance (credits)
                   </p>
                 </div>
               </div>
@@ -294,7 +377,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Amount */}
+            {/* {/* Amount 
             <div className="w-full">
               <div
                 className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
@@ -325,12 +408,12 @@ export default function DashboardPage() {
                   required
                 />
               </div>
-            </div>
+            </div> */}
 
             {/* Actions */}
             <div className="w-full">
               <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-                <button
+                {/* <button
                   onClick={handleRequest}
                   disabled={!canSubmit}
                   aria-disabled={!canSubmit}
@@ -342,7 +425,7 @@ export default function DashboardPage() {
                   }}
                 >
                   Request
-                </button>
+                </button> */}
                 <button
                   onClick={handleSend}
                   disabled={!canSubmit}
@@ -353,13 +436,13 @@ export default function DashboardPage() {
                     borderColor: "var(--foreground)",
                   }}
                 >
-                  Send
+                  Send 2 credits
                 </button>
               </div>
               {!canSubmit && (
                 <p className="mt-1.5 font-mono text-[11px] opacity-80">
-                  Hint: select a valid user, enter a reason, and an amount
-                  greater than 0.
+                  Hint: select a valid user and enter a reason. Each send
+                  transfers 2 credits.
                 </p>
               )}
               {showSettings && (
