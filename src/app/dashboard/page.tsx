@@ -41,6 +41,23 @@ export default function DashboardPage() {
     }>
   >([]);
 
+  // Map emails to usernames for display; keep usernames as-is
+  const emailToUsername = useMemo(() => {
+    const m = new Map<string, string>();
+    users.forEach((u) => m.set(u.email.toLowerCase(), u.username));
+    return m;
+  }, [users]);
+
+  const resolveName = useCallback(
+    (id: string) => {
+      if (!id) return id;
+      if (id.toLowerCase() === "class bank") return "Class Bank";
+      if (id.includes("@")) return emailToUsername.get(id.toLowerCase()) || id;
+      return id; // assume already username
+    },
+    [emailToUsername]
+  );
+
   const userInitial = useMemo(
     () => (user?.username ? user.username.charAt(0).toUpperCase() : "?"),
     [user?.username]
@@ -600,7 +617,8 @@ export default function DashboardPage() {
                             {new Date(t.timestamp).toLocaleString()}
                           </div>
                           <div className="flex-1 px-2 text-xs sm:text-sm truncate">
-                            {t.from} → {t.to} {t.reason ? `· ${t.reason}` : ""}
+                            {resolveName(t.from)} → {resolveName(t.to)}{" "}
+                            {t.reason ? `· ${t.reason}` : ""}
                           </div>
                           <div
                             className={`text-xs sm:text-sm font-mono tabular-nums ${
@@ -615,48 +633,60 @@ export default function DashboardPage() {
                     )}
                   </ul>
                 )}
-              </div>
-            </div>
 
-            {/* Global Transactions Log */}
-            <div className="w-full">
-              <div
-                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
-                style={{
-                  background: "var(--background)",
-                  color: "var(--foreground)",
-                  borderColor: "var(--foreground)",
-                }}
-              >
-                <h3
-                  className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-3"
-                  style={{ color: "var(--accent)" }}
+                {/* Global log below, scrollable */}
+                <div
+                  className="mt-4 pt-3 border-t-2"
+                  style={{ borderColor: "var(--foreground)" }}
                 >
-                  All Users — Recent Transactions
-                </h3>
-                {globalRecent.length === 0 ? (
-                  <div className="text-center py-6">
-                    <p className="font-mono opacity-80">No activity yet.</p>
-                  </div>
-                ) : (
-                  <ul
-                    className="divide-y-2"
-                    style={{ borderColor: "var(--foreground)" }}
-                  >
-                    {globalRecent.map((t, i) => (
-                      <li key={i} className="py-2">
-                        <div className="text-xs sm:text-sm font-mono opacity-80">
-                          {new Date(t.timestamp).toLocaleString()}
-                        </div>
-                        <div className="text-xs sm:text-sm font-mono mt-1">
-                          {`${t.from} has transfered ${t.amount} to ${t.to}$${
-                            t.reason ? ` for ${t.reason}` : ""
-                          }`}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                  {globalRecent.length === 0 ? (
+                    <div className="text-center py-3">
+                      <p className="font-mono text-xs opacity-80">
+                        No global activity yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="max-h-72 overflow-y-auto pr-1">
+                      <ul
+                        className="divide-y-2"
+                        style={{ borderColor: "var(--foreground)" }}
+                      >
+                        {globalRecent.map((t, i) => (
+                          <li key={i} className="py-2">
+                            <div className="text-[11px] sm:text-xs font-mono opacity-80">
+                              {new Date(t.timestamp).toLocaleString()}
+                            </div>
+                            <div className="text-xs sm:text-sm font-mono mt-1 leading-relaxed">
+                              <span className="font-semibold">
+                                {resolveName(t.from)}
+                              </span>{" "}
+                              has transfered{" "}
+                              <span
+                                className="font-semibold"
+                                style={{ color: "var(--accent)" }}
+                              >
+                                {t.amount}
+                              </span>{" "}
+                              to{" "}
+                              <span className="font-semibold">
+                                {resolveName(t.to)}
+                              </span>
+                              {t.reason ? (
+                                <>
+                                  {" "}
+                                  for{" "}
+                                  <span className="italic font-semibold">
+                                    {t.reason}
+                                  </span>
+                                </>
+                              ) : null}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
