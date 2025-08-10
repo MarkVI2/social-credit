@@ -1,20 +1,39 @@
 import nodemailer from "nodemailer";
 
-const smtpHost = process.env.SMTP_HOST || "";
-const smtpPort = parseInt(process.env.SMTP_PORT || "587", 10);
+let smtpHost = process.env.SMTP_HOST || "";
+let smtpPort = parseInt(process.env.SMTP_PORT || "587", 10);
 const smtpUser = process.env.SMTP_USER || "";
 const smtpPass = process.env.SMTP_PASS || "";
 const fromEmail = process.env.MAIL_FROM || smtpUser;
+const getBaseUrl = () =>
+  (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(
+    /\/+$/,
+    ""
+  );
+
+// Auto-default to Gmail if host is not provided but a Gmail account is used
+if (!smtpHost && /@gmail\.com$/i.test(smtpUser)) {
+  smtpHost = "smtp.gmail.com";
+  smtpPort = 587;
+}
+
+if (!smtpUser || !smtpPass) {
+  // Provide a clear runtime error to help configuration
+  // eslint-disable-next-line no-console
+  console.error(
+    "Email is not configured. Please set SMTP_USER and SMTP_PASS (for Gmail: use an App Password)."
+  );
+}
 
 const transporter = nodemailer.createTransport({
-  host: smtpHost,
+  host: smtpHost || undefined,
   port: smtpPort,
   secure: smtpPort === 465,
   auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
 });
 
 export async function sendVerificationEmail(to: string, token: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl = getBaseUrl();
   const verifyUrl = `${baseUrl}/api/auth/verify?token=${encodeURIComponent(
     token
   )}`;
@@ -31,7 +50,7 @@ export async function sendVerificationEmail(to: string, token: string) {
 }
 
 export async function sendPasswordResetEmail(to: string, token: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl = getBaseUrl();
   const url = `${baseUrl}/auth/reset?token=${encodeURIComponent(token)}`;
   await transporter.sendMail({
     to,
