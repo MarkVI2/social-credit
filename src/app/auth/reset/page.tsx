@@ -33,7 +33,7 @@ export default function ResetPage() {
       } else {
         setMsg(data.message || "Failed to reset password");
       }
-    } catch (e) {
+    } catch {
       setMsg("Network error. Try again later.");
     }
     setLoading(false);

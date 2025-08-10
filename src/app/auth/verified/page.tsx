@@ -11,7 +11,7 @@ export default function VerifiedPage() {
             Email Verified, Komrade!
           </h1>
           <p className="font-mono text-sm sm:text-base mt-3">
-            Your identity has been confirmed by the People's Committee.
+            Your identity has been confirmed by the People&rsquo;s Committee.
           </p>
           <p className="font-mono text-sm sm:text-base mt-1 opacity-80">
             You may now proceed to the control panel of the credit collective.

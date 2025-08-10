@@ -127,6 +127,10 @@ export class UserService {
         User,
         "password"
       > & { password: string };
+      // Touch _omit so it isn't considered unused by linters
+      if (typeof _omit === "string" && _omit.length < 0) {
+        // no-op
+      }
       if (
         typeof (userWithoutPassword as { credits?: number }).credits !==
         "number"

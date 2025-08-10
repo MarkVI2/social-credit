@@ -42,6 +42,30 @@ export default function LoginPage() {
         router.push("/dashboard");
       } else {
         setError(data.message);
+        // Auto-resend verification if not verified and an email is provided
+        if (
+          typeof data.message === "string" &&
+          data.message.toLowerCase().includes("email not verified") &&
+          identifier.includes("@")
+        ) {
+          try {
+            setResending(true);
+            setResendMsg("");
+            const res = await fetch("/api/auth/verify/resend", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: identifier.trim() }),
+            });
+            await res.json();
+            setResendMsg(
+              "We sent a fresh verification link. Check your inbox and Spam/Junk."
+            );
+          } catch {
+            setResendMsg("Failed to resend. Try again later.");
+          } finally {
+            setResending(false);
+          }
+        }
       }
     } catch (error) {
       console.error("Login error:", error);

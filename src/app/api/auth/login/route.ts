@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { UserService } from "@/services/userService";
-import { LoginInput } from "@/types/user";
+import { LoginInput, User } from "@/types/user";
+import { getDatabase } from "@/lib/mongodb";
+import crypto from "crypto";
+import { sendVerificationEmail } from "@/services/mailService";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +28,43 @@ export async function POST(request: NextRequest) {
     const result = await UserService.authenticateUser(identifier, password);
 
     if (!result.success) {
+      // If password was correct but email not verified, auto-resend a fresh verification link
+      if (
+        typeof result.message === "string" &&
+        result.message.toLowerCase().includes("email not verified")
+      ) {
+        try {
+          const db = await getDatabase();
+          const coll = db.collection<User>("userinformation");
+          // Find by identifier (username or email)
+          const userDoc = await coll.findOne(
+            rawIdentifier.includes("@")
+              ? { email: identifier }
+              : { username: identifier }
+          );
+          if (userDoc && !userDoc.emailVerified) {
+            const token = crypto.randomBytes(24).toString("hex");
+            const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
+            await coll.updateOne(
+              { _id: userDoc._id },
+              {
+                $set: {
+                  verificationToken: token,
+                  verificationTokenExpiresAt: expiresAt,
+                  updatedAt: new Date(),
+                },
+              }
+            );
+            try {
+              await sendVerificationEmail(userDoc.email, token);
+            } catch (e) {
+              console.error("Auto-resend verification failed:", e);
+            }
+          }
+        } catch (e) {
+          console.error("Login auto-resend error:", e);
+        }
+      }
       return NextResponse.json(
         { success: false, message: result.message },
         { status: 401 }

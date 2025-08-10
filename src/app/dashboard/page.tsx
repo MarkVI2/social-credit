@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
 import SettingsModal from "@/components/SettingsModal";
@@ -64,7 +64,7 @@ export default function DashboardPage() {
   const canSubmit = isValidUser && isValidReason;
 
   // Refresh current user from DB and sync credits
-  const refreshCurrentUser = async () => {
+  const refreshCurrentUser = useCallback(async () => {
     try {
       if (!user) return;
       // Query users API and find the current user
@@ -92,7 +92,7 @@ export default function DashboardPage() {
     } catch (e) {
       console.error("Failed to refresh user", e);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     // Try to load current user from localStorage (temporary client-side session)
@@ -146,7 +146,7 @@ export default function DashboardPage() {
     if (user) {
       refreshCurrentUser();
     }
-  }, [user]);
+  }, [user, refreshCurrentUser]);
 
   // Periodically refresh balance every 1 minute
   useEffect(() => {
@@ -155,7 +155,7 @@ export default function DashboardPage() {
       refreshCurrentUser();
     }, 60 * 1000);
     return () => clearInterval(id);
-  }, [user]);
+  }, [user, refreshCurrentUser]);
 
   const handleSend = async () => {
     const target = users.find(
