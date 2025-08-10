@@ -24,7 +24,7 @@ if (!smtpUser || !smtpPass) {
   );
 }
 
-const transporter = nodemailer.createTransport({
+export const transporter = nodemailer.createTransport({
   host: smtpHost || undefined,
   port: smtpPort,
   secure: smtpPort === 465,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { UserService } from "@/services/userService";
 import { UserInput } from "@/types/user";
+import { isEmailAllowed } from "@/lib/allowlist";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +51,18 @@ export async function POST(request: NextRequest) {
           message: "Password must be at least 8 characters long",
         },
         { status: 400 }
+      );
+    }
+
+    // Validate email allowlist
+    const allowed = await isEmailAllowed(body.email);
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Signup not allowed for this email address",
+        },
+        { status: 403 }
       );
     }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "@/lib/mongodb";
+import { logTransaction } from "@/services/transactionService";
 
 // POST /api/transactions
 // Body: { from: string (username or email), to: string (username or email), reason?: string }
@@ -71,6 +72,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Log transaction after completion
+    await logTransaction({
+      from: fromUser.username || fromUser.email,
+      to: toUser.username || toUser.email,
+      amount,
+      reason,
+      timestamp: new Date(),
+    });
+
     return NextResponse.json({
       success: true,
       message: "Transferred 2 credits",
@@ -79,6 +89,49 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Transaction API error:", error);
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+// GET /api/transactions?userId=...&limit=10
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const userId = (searchParams.get("userId") || "").trim();
+    const limit = Math.min(
+      50,
+      Math.max(1, parseInt(searchParams.get("limit") || "10", 10))
+    );
+    if (!userId)
+      return NextResponse.json(
+        { success: false, message: "userId required" },
+        { status: 400 }
+      );
+
+    const db = await getDatabase();
+    const users = db.collection("userinformation");
+    const tx = db.collection("transactionHistory");
+    const { ObjectId } = await import("mongodb");
+    const user = await users.findOne({ _id: new ObjectId(userId) });
+    if (!user)
+      return NextResponse.json(
+        { success: false, message: "User not found" },
+        { status: 404 }
+      );
+
+    const username = user.username || user.email;
+    const items = await tx
+      .find({ $or: [{ from: username }, { to: username }] })
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .toArray();
+
+    return NextResponse.json({ success: true, items });
+  } catch (e) {
+    console.error("Transactions GET error", e);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

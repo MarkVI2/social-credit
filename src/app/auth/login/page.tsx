@@ -36,10 +36,12 @@ export default function LoginPage() {
         try {
           if (typeof window !== "undefined") {
             localStorage.setItem("currentUser", JSON.stringify(data.user));
+            if (data.token) localStorage.setItem("auth_token", data.token);
           }
         } catch {}
-        // Redirect to dashboard
-        router.push("/dashboard");
+        // Redirect based on role
+        const role = (data.user?.role || "user").toLowerCase();
+        router.push(role === "admin" ? "/admin" : "/dashboard");
       } else {
         setError(data.message);
         // Auto-resend verification if not verified and an email is provided

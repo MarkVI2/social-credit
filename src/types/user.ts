@@ -13,6 +13,11 @@ export interface User {
   verificationTokenExpiresAt?: Date;
   resetToken?: string;
   resetTokenExpiresAt?: Date;
+  // Role-based access control
+  role?: "user" | "admin";
+  // Token-based session (localStorage/cookie). Store only hash in DB.
+  sessionTokenHash?: string;
+  sessionTokenExpiresAt?: Date;
 }
 
 export interface UserInput {

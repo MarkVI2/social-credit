@@ -55,6 +55,7 @@ export class UserService {
         email: userData.email.toLowerCase(),
         password: hashedPassword,
         credits: 20,
+        role: "user",
         emailVerified: false,
         verificationToken: token,
         verificationTokenExpiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
@@ -143,6 +144,16 @@ export class UserService {
           { $set: { credits: 20, updatedAt: new Date() } }
         );
         (userWithoutPassword as { credits?: number }).credits = 20;
+      }
+
+      if (!(userWithoutPassword as { role?: string }).role) {
+        await (
+          await this.getCollection()
+        ).updateOne(
+          { _id: user._id },
+          { $set: { role: "user", updatedAt: new Date() } }
+        );
+        (userWithoutPassword as { role?: string }).role = "user";
       }
 
       return {

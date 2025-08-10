@@ -22,6 +22,15 @@ export default function DashboardPage() {
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [reason, setReason] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
+  const [recent, setRecent] = useState<
+    Array<{
+      timestamp: string;
+      from: string;
+      to: string;
+      amount: number;
+      reason?: string;
+    }>
+  >([]);
 
   const userInitial = useMemo(
     () => (user?.username ? user.username.charAt(0).toUpperCase() : "?"),
@@ -101,6 +110,11 @@ export default function DashboardPage() {
         typeof window !== "undefined" && localStorage.getItem("currentUser");
       if (stored) {
         const u = JSON.parse(stored);
+        // If admin, bounce to /admin
+        if ((u.role || "user").toLowerCase() === "admin") {
+          router.push("/admin");
+          return;
+        }
         setUser(u);
         if (typeof u.credits === "number") setBalance(Math.trunc(u.credits));
         return;
@@ -139,7 +153,7 @@ export default function DashboardPage() {
         }
       })
       .catch((err) => console.error("Error fetching users:", err));
-  }, [user?.username, user?.email]);
+  }, [user?.username, user?.email, user]);
 
   // Once user is set, do an initial refresh to ensure balance is up-to-date
   useEffect(() => {
@@ -156,6 +170,24 @@ export default function DashboardPage() {
     }, 60 * 1000);
     return () => clearInterval(id);
   }, [user, refreshCurrentUser]);
+
+  // Fetch recent transactions for the logged-in user
+  useEffect(() => {
+    const load = async () => {
+      if (!user?._id) return;
+      try {
+        const res = await fetch(
+          `/api/transactions?userId=${user._id}&limit=10`,
+          { cache: "no-store" }
+        );
+        const data = await res.json();
+        if (data.success) setRecent(data.items);
+      } catch (e) {
+        console.error("Failed to load transactions", e);
+      }
+    };
+    load();
+  }, [user?._id]);
 
   const handleSend = async () => {
     const target = users.find(
@@ -201,6 +233,7 @@ export default function DashboardPage() {
   const handleLogout = () => {
     try {
       localStorage.removeItem("currentUser");
+      localStorage.removeItem("auth_token");
     } catch {}
     router.push("/auth/login");
   };
@@ -472,11 +505,51 @@ export default function DashboardPage() {
                 >
                   Recent Transactions
                 </h3>
-                <div className="text-center py-6">
-                  <p className="font-mono opacity-80">
-                    No transactions yet. Start by sending or receiving money!
-                  </p>
-                </div>
+                {recent.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="font-mono opacity-80">
+                      No transactions yet. Start by sending or receiving money!
+                    </p>
+                  </div>
+                ) : (
+                  <ul
+                    className="divide-y-2"
+                    style={{ borderColor: "var(--foreground)" }}
+                  >
+                    {recent.map(
+                      (
+                        t: {
+                          timestamp: string;
+                          from: string;
+                          to: string;
+                          amount: number;
+                          reason?: string;
+                        },
+                        i: number
+                      ) => (
+                        <li
+                          key={i}
+                          className="py-2 flex items-center justify-between"
+                        >
+                          <div className="text-xs sm:text-sm font-mono opacity-80">
+                            {new Date(t.timestamp).toLocaleString()}
+                          </div>
+                          <div className="flex-1 px-2 text-xs sm:text-sm truncate">
+                            {t.from} → {t.to} {t.reason ? `· ${t.reason}` : ""}
+                          </div>
+                          <div
+                            className={`text-xs sm:text-sm font-mono tabular-nums ${
+                              t.amount >= 0 ? "text-green-700" : "text-red-700"
+                            }`}
+                          >
+                            {t.amount >= 0 ? "+" : ""}
+                            {t.amount}
+                          </div>
+                        </li>
+                      )
+                    )}
+                  </ul>
+                )}
               </div>
             </div>
           </div>
