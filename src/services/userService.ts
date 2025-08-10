@@ -57,6 +57,7 @@ export class UserService {
         credits: 20,
         emailVerified: false,
         verificationToken: token,
+        verificationTokenExpiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -110,6 +111,15 @@ export class UserService {
 
       if (!isPasswordValid) {
         return { success: false, message: "Invalid credentials" };
+      }
+
+      // Require verified email to log in
+      if (!user.emailVerified) {
+        return {
+          success: false,
+          message:
+            "Email not verified. Please check your inbox for the verification link.",
+        };
       }
 
       // Return user without password

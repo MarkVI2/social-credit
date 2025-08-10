@@ -10,6 +10,7 @@ export interface User {
   updatedAt: Date;
   emailVerified?: boolean;
   verificationToken?: string;
+  verificationTokenExpiresAt?: Date;
   resetToken?: string;
   resetTokenExpiresAt?: Date;
 }

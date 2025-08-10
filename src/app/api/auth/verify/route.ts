@@ -22,11 +22,33 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Check expiry (24h window stored at signup)
+    const expiresAt = (user as any).verificationTokenExpiresAt as
+      | Date
+      | undefined;
+    if (!expiresAt || new Date(expiresAt).getTime() < Date.now()) {
+      // Token expired; clear token to prevent reuse
+      await coll.updateOne(
+        { _id: user._id },
+        {
+          $unset: { verificationToken: "", verificationTokenExpiresAt: "" },
+          $set: { updatedAt: new Date() },
+        }
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Verification link expired. Please request a new one.",
+        },
+        { status: 400 }
+      );
+    }
+
     await coll.updateOne(
       { _id: user._id },
       {
         $set: { emailVerified: true, updatedAt: new Date() },
-        $unset: { verificationToken: "" },
+        $unset: { verificationToken: "", verificationTokenExpiresAt: "" },
       }
     );
 
