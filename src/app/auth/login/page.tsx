@@ -13,6 +13,8 @@ export default function LoginPage() {
   const [showForgot, setShowForgot] = useState(false);
   const [fpIdentifier, setFpIdentifier] = useState("");
   const [fpMsg, setFpMsg] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +71,44 @@ export default function LoginPage() {
             {error && (
               <div className="border-4 border-[#C62828] bg-white/60 p-3">
                 <p className="font-mono text-sm text-[#C62828]">{error}</p>
+                {error.toLowerCase().includes("email not verified") && (
+                  <div className="mt-2 flex items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={resending || !identifier.includes("@")}
+                      onClick={async () => {
+                        setResendMsg("");
+                        if (!identifier.includes("@")) {
+                          setResendMsg(
+                            "Enter your email address in the login field to resend."
+                          );
+                          return;
+                        }
+                        setResending(true);
+                        try {
+                          const res = await fetch("/api/auth/verify/resend", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ email: identifier.trim() }),
+                          });
+                          await res.json();
+                          setResendMsg(
+                            "If the email exists, a fresh verification link was sent. Check your inbox and Spam/Junk."
+                          );
+                        } catch {
+                          setResendMsg("Failed to resend. Try again later.");
+                        }
+                        setResending(false);
+                      }}
+                      className="bg-[#C62828] text-white py-2 px-3 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 disabled:opacity-60 btn-3d text-xs"
+                    >
+                      {resending ? "Resending…" : "Resend verification email"}
+                    </button>
+                    {resendMsg && (
+                      <span className="font-mono text-[11px]">{resendMsg}</span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

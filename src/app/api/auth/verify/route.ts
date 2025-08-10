@@ -51,7 +51,13 @@ export async function GET(req: NextRequest) {
       }
     );
 
-    return NextResponse.json({ success: true, message: "Email verified" });
+    // Redirect to a friendly verified page
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+    const verifiedPath = "/auth/verified";
+    const location = baseUrl
+      ? `${baseUrl.replace(/\/+$/, "")}${verifiedPath}`
+      : verifiedPath;
+    return NextResponse.redirect(location);
   } catch (e) {
     console.error("Verify email error:", e);
     return NextResponse.json(

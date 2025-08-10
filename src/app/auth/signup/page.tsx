@@ -18,6 +18,9 @@ export default function SignupPage() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [postMsg, setPostMsg] = useState<string>("");
+  const [resendMsg, setResendMsg] = useState<string>("");
+  const [resending, setResending] = useState<boolean>(false);
 
   const validateEmail = (email: string) => {
     if (!email.endsWith("@mahindrauniversity.edu.in")) {
@@ -63,7 +66,9 @@ export default function SignupPage() {
         });
         const data = await response.json();
         if (data.success) {
-          alert("Account created successfully! You can now log in.");
+          setPostMsg(
+            "Account created! We sent a verification link to your email. Please verify to log in. If you don't see it in your inbox, check your Spam/Junk folder."
+          );
           setFormData({
             username: "",
             email: "",
@@ -199,6 +204,40 @@ export default function SignupPage() {
               {isLoading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
+
+          {postMsg && (
+            <div className="mt-4 border-4 border-[#28282B] bg-white/60 p-3">
+              <p className="font-mono text-sm">{postMsg}</p>
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={resending}
+                  onClick={async () => {
+                    setResendMsg("");
+                    setResending(true);
+                    try {
+                      const res = await fetch("/api/auth/verify/resend", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: formData.email }),
+                      });
+                      await res.json();
+                      setResendMsg(
+                        "If the email exists, a fresh verification link was sent. Check your inbox and Spam/Junk."
+                      );
+                    } catch {
+                      setResendMsg("Failed to resend. Try again later.");
+                    }
+                    setResending(false);
+                  }}
+                  className="bg-[#C62828] text-white py-2 px-4 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 disabled:opacity-60 btn-3d"
+                >
+                  {resending ? "Resending…" : "Resend Verification Email"}
+                </button>
+                {resendMsg && <p className="font-mono text-xs">{resendMsg}</p>}
+              </div>
+            </div>
+          )}
 
           {/* Login link */}
           <div className="text-center mt-4">
