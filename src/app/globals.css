@@ -1,10 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  /* Color palette */
+  /* Color palette (light theme defaults) */
   --background: #f5f5dc; /* parchment */
   --foreground: #28282b; /* charcoal */
   --accent: #c62828; /* revolution red */
+  --shadow: #28282b; /* card/button drop shadow light */
+  --shadow-strong: #000000; /* strong 3D press shadow */
+  --success: #15803d; /* green (tailwind green-700) */
+  --danger: #b91c1c; /* red (tailwind red-700) */
+  --border: var(--foreground);
+  --surface-alt: #f2f2d6; /* subtle elevated layer */
+  --accent-contrast: #ffffff;
 
   /* Fonts */
   --font-sans: var(--font-inter);
@@ -16,18 +23,33 @@
 
 /* Keep contrast for users in dark mode but preserve palette intent */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #121212;
-    --foreground: #ededed;
+  :root:not(.light) {
+    --background: #1a1a1a;
+    --foreground: #f0f0f0;
     --accent: #c62828;
+    --shadow: #0f0f0f;
+    --shadow-strong: #000000;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --border: var(--foreground);
+    --surface-alt: #222222;
+    --accent-contrast: #ffffff;
   }
 }
 
 /* Class-based dark theme override (takes precedence over media query) */
+/* Explicit dark class (overrides light) */
 .dark {
-  --background: #121212;
-  --foreground: #ededed;
+  --background: #1a1a1a;
+  --foreground: #f0f0f0;
   --accent: #c62828;
+  --shadow: #0f0f0f;
+  --shadow-strong: #000000;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --border: var(--foreground);
+  --surface-alt: #222222;
+  --accent-contrast: #ffffff;
 }
 
 /* Class-based light theme override to force light even if OS prefers dark */
@@ -35,6 +57,17 @@
   --background: #f5f5dc;
   --foreground: #28282b;
   --accent: #c62828;
+  --shadow: #28282b;
+  --shadow-strong: #000000;
+  --success: #15803d;
+  --danger: #b91c1c;
+  --border: var(--foreground);
+  --surface-alt: #f2f2d6;
+  --accent-contrast: #ffffff;
+}
+
+html {
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 body {
@@ -50,17 +83,36 @@ body {
 
 /* 3D press animation utility for buttons */
 .btn-3d {
-  box-shadow: 6px 6px 0 0 #000;
+  box-shadow: 6px 6px 0 0 var(--shadow-strong);
   transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
 }
 .btn-3d:hover {
   transform: translate(-1px, -1px);
-  box-shadow: 7px 7px 0 0 #000;
+  box-shadow: 7px 7px 0 0 var(--shadow-strong);
 }
 .btn-3d:active {
   transform: translate(6px, 6px);
-  box-shadow: 0 0 0 0 #000;
+  box-shadow: 0 0 0 0 var(--shadow-strong);
   animation: btn-spring 280ms cubic-bezier(0.2, 0.8, 0.2, 1) 1;
+}
+
+/* Shadow utility classes */
+.shadow-card {
+  box-shadow: 8px 8px 0 0 var(--shadow);
+}
+.shadow-card-sm {
+  box-shadow: 6px 6px 0 0 var(--shadow);
+}
+.shadow-card-lg {
+  box-shadow: 10px 10px 0 0 var(--shadow);
+}
+
+/* Semantic status text colors */
+.text-success {
+  color: var(--success) !important;
+}
+.text-danger {
+  color: var(--danger) !important;
 }
 
 @keyframes btn-spring {

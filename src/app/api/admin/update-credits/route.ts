@@ -4,6 +4,11 @@ export const runtime = "nodejs";
 import { getDatabase } from "@/lib/mongodb";
 import { getUserFromAuthHeader, requireAdmin } from "@/lib/auth";
 import { logTransaction } from "@/services/transactionService";
+import { recordActivity } from "@/services/logService";
+import {
+  buildAdminGiveMessage,
+  buildAdminTakeMessage,
+} from "@/services/messageTemplates";
 import clientPromise from "@/lib/mongodb";
 import type { User } from "@/types/user";
 import { ObjectId } from "mongodb";
@@ -146,24 +151,65 @@ export async function POST(req: NextRequest) {
       await session.endSession();
     }
 
-    // Log transaction after commit
+    // Determine perspective values
+    const adminName = me!.username || me!.email;
+    const isCredit = amount > 0;
+    const signedAmount = Math.abs(amount) * (isCredit ? 1 : -1);
+    const logicalFrom = isCredit
+      ? sourceAccount === "admin"
+        ? adminName
+        : "Class Bank"
+      : target.username;
+    const logicalTo = isCredit
+      ? target.username
+      : sourceAccount === "admin"
+      ? adminName
+      : "Class Bank";
+
+    // Log base transaction (generic)
     await logTransaction({
-      from:
-        amount > 0
-          ? sourceAccount === "admin"
-            ? me!.email || me!.username
-            : "Class Bank"
-          : target.username,
-      to:
-        amount > 0
-          ? target.username
-          : sourceAccount === "admin"
-          ? me!.email || me!.username
-          : "Class Bank",
-      amount: Math.abs(amount) * (amount > 0 ? 1 : -1),
+      from: logicalFrom,
+      to: logicalTo,
+      amount: signedAmount,
       reason,
       timestamp: new Date(),
     });
+
+    // Weighted communist-inspired messages via helpers (only for direct admin adjustments)
+    let chosen: string | undefined;
+    if (sourceAccount === "admin") {
+      chosen = isCredit
+        ? buildAdminGiveMessage({
+            admin: adminName,
+            user: target.username,
+            credits: Math.abs(amount),
+            reason,
+          })
+        : buildAdminTakeMessage({
+            admin: adminName,
+            user: target.username,
+            credits: Math.abs(amount),
+            reason,
+          });
+    }
+
+    try {
+      await recordActivity({
+        type: "admin_adjustment",
+        action: isCredit ? "grant" : "deduct",
+        data: {
+          admin: adminName,
+          user: target.username,
+          amount: signedAmount,
+          reason,
+          sourceAccount,
+        },
+        undone: false,
+        message: chosen,
+      });
+    } catch {
+      // non-fatal; continue
+    }
 
     // Email notification (best-effort)
     try {

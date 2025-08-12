@@ -4,6 +4,15 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
 import SettingsModal from "@/components/SettingsModal";
+// Transaction item shape (user + global recent logs)
+interface UserTransaction {
+  timestamp: string | Date;
+  from: string;
+  to: string;
+  amount: number;
+  reason?: string;
+  message?: string;
+}
 import { IconLogout } from "@tabler/icons-react";
 
 interface User {
@@ -250,22 +259,22 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchRecent();
     fetchGlobalRecent();
-  }, [fetchRecent]);
+  }, [fetchRecent, fetchGlobalRecent]);
 
-  // Optional: light polling so incoming transactions appear without manual refresh
+  // Optional: light polling so incoming transactions appear without manual refresh (reduced to 60s to limit load)
   useEffect(() => {
     if (!user) return;
     const id = setInterval(() => {
       fetchRecent();
-    }, 5 * 1000);
+    }, 60 * 1000);
     return () => clearInterval(id);
   }, [user, fetchRecent]);
 
-  // Poll global recent as well
+  // Poll global recent as well (reduced to 60s)
   useEffect(() => {
     const id = setInterval(() => {
       fetchGlobalRecent();
-    }, 5 * 1000);
+    }, 60 * 1000);
     return () => clearInterval(id);
   }, [fetchGlobalRecent]);
 
@@ -322,7 +331,10 @@ export default function DashboardPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#F5F5DC] text-[#28282B] flex items-center justify-center">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "var(--background)", color: "var(--foreground)" }}
+      >
         <div className="font-mono">Loading…</div>
       </div>
     );
@@ -335,27 +347,34 @@ export default function DashboardPage() {
     >
       {/* Page container */}
       <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-3 min-w-0">
-        {/* Layout: single column on sm/md, two-column grid on lg with fixed left rail */}
-        <div className="grid gap-4 lg:grid-cols-[20rem_1fr] lg:items-start">
-          {/* Main content (first in DOM; on lg it will occupy the right column) */}
-          <div className="w-full lg:col-start-2 max-w-screen-md mx-auto flex flex-col gap-4 min-w-0">
+        {/* Responsive flex layout: column on mobile, row on lg */}
+        <div className="flex flex-col lg:flex-row items-start gap-4">
+          {/* Left column: leaderboard (order after content on mobile for priority) */}
+          <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 order-1 lg:order-none lg:sticky lg:top-24 self-start min-w-0">
+            <div className="lg:pr-2">
+              <LeaderboardSidebar forceRowEntries fixedBadgeWidth />
+            </div>
+          </div>
+
+          {/* Main content */}
+          <div className="w-full max-w-screen-md mx-auto flex flex-col gap-4 min-w-0 order-0 lg:order-none flex-1">
             {/* Header (welcome bar) */}
             <div className="w-full">
               <div
-                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card"
                 style={{
                   background: "var(--background)",
                   color: "var(--foreground)",
                   borderColor: "var(--foreground)",
                 }}
               >
-                {/* Top row: avatar + greeting on the left, logout on the right */}
-                <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap">
-                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                {/* Top row: avatar + greeting (left) and logout (right) */}
+                <div className="flex items-stretch gap-4">
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
                     <button
                       onClick={() => setShowSettings(true)}
                       aria-label={`Open settings for ${user.username}`}
-                      className="w-10 h-10 sm:w-9 sm:h-9 rounded-full border-4 flex items-center justify-center font-bold btn-3d"
+                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 flex items-center justify-center font-bold btn-3d shrink-0 text-xl sm:text-2xl"
                       style={{
                         background: "var(--background)",
                         color: "var(--foreground)",
@@ -364,29 +383,29 @@ export default function DashboardPage() {
                     >
                       {userInitial}
                     </button>
-                    <div className="min-w-0 pr-10 sm:pr-0">
+                    <div className="min-w-0 flex-1">
                       <h1
-                        className="font-heading text-lg sm:text-xl md:text-2xl font-extrabold uppercase tracking-wider truncate"
+                        className="font-heading text-lg sm:text-xl md:text-2xl font-extrabold uppercase tracking-wider break-words whitespace-normal"
                         style={{ color: "var(--accent)" }}
                       >
                         {greeting}
                       </h1>
-                      <p className="font-mono text-xs sm:text-sm mt-1 opacity-80 truncate">
+                      <p className="font-mono text-xs sm:text-sm mt-1 opacity-80 break-words whitespace-normal">
                         Control panel of the credit collective
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="flex items-start">
                     <button
                       onClick={handleLogout}
                       aria-label="Logout"
-                      className="text-white px-3.5 py-2 sm:py-1.5 rounded-none font-bold border-4 hover:opacity-90 btn-3d flex items-center justify-center"
+                      className="text-white px-4 py-3 sm:px-5 sm:py-3 rounded-none font-bold border-4 hover:opacity-90 btn-3d flex items-center justify-center h-full"
                       style={{
                         background: "var(--accent)",
                         borderColor: "var(--foreground)",
                       }}
                     >
-                      <IconLogout size={20} stroke={2} />
+                      <IconLogout size={24} stroke={2} />
                     </button>
                   </div>
                 </div>
@@ -396,7 +415,7 @@ export default function DashboardPage() {
             {/* Balance */}
             <div className="w-full">
               <div
-                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card"
                 style={{
                   background: "var(--background)",
                   color: "var(--foreground)",
@@ -426,7 +445,7 @@ export default function DashboardPage() {
             {/* Select User */}
             <div className="w-full">
               <div
-                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card"
                 style={{
                   background: "var(--background)",
                   color: "var(--foreground)",
@@ -466,7 +485,7 @@ export default function DashboardPage() {
             {/* Reason */}
             <div className="w-full">
               <div
-                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card"
                 style={{
                   background: "var(--background)",
                   color: "var(--foreground)",
@@ -498,7 +517,7 @@ export default function DashboardPage() {
             {/* {/* Amount 
             <div className="w-full">
               <div
-                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card"
                 style={{
                   background: "var(--background)",
                   color: "var(--foreground)",
@@ -574,7 +593,7 @@ export default function DashboardPage() {
             {/* Recent Transactions */}
             <div className="w-full">
               <div
-                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-[8px_8px_0_0_#28282B]"
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card"
                 style={{
                   background: "var(--background)",
                   color: "var(--foreground)",
@@ -598,39 +617,34 @@ export default function DashboardPage() {
                     className="divide-y-2"
                     style={{ borderColor: "var(--foreground)" }}
                   >
-                    {recent.map(
-                      (
-                        t: {
-                          timestamp: string;
-                          from: string;
-                          to: string;
-                          amount: number;
-                          reason?: string;
-                        },
-                        i: number
-                      ) => (
-                        <li
-                          key={i}
-                          className="py-2 flex items-center justify-between"
+                    {recent.map((t: UserTransaction, i: number) => (
+                      <li
+                        key={i}
+                        className="py-2 flex items-center justify-between"
+                      >
+                        <div className="text-xs sm:text-sm font-mono opacity-80">
+                          {new Date(t.timestamp).toLocaleString()}
+                        </div>
+                        <div className="flex-1 px-2 text-xs sm:text-sm truncate">
+                          {t.message ? (
+                            <span title={t.message}>{t.message}</span>
+                          ) : (
+                            <>
+                              {resolveName(t.from)} → {resolveName(t.to)}{" "}
+                              {t.reason ? `· ${t.reason}` : ""}
+                            </>
+                          )}
+                        </div>
+                        <div
+                          className={`text-xs sm:text-sm font-mono tabular-nums ${
+                            t.amount >= 0 ? "text-success" : "text-danger"
+                          }`}
                         >
-                          <div className="text-xs sm:text-sm font-mono opacity-80">
-                            {new Date(t.timestamp).toLocaleString()}
-                          </div>
-                          <div className="flex-1 px-2 text-xs sm:text-sm truncate">
-                            {resolveName(t.from)} → {resolveName(t.to)}{" "}
-                            {t.reason ? `· ${t.reason}` : ""}
-                          </div>
-                          <div
-                            className={`text-xs sm:text-sm font-mono tabular-nums ${
-                              t.amount >= 0 ? "text-green-700" : "text-red-700"
-                            }`}
-                          >
-                            {t.amount >= 0 ? "+" : ""}
-                            {t.amount}
-                          </div>
-                        </li>
-                      )
-                    )}
+                          {t.amount >= 0 ? "+" : ""}
+                          {t.amount}
+                        </div>
+                      </li>
+                    ))}
                   </ul>
                 )}
 
@@ -651,35 +665,41 @@ export default function DashboardPage() {
                         className="divide-y-2"
                         style={{ borderColor: "var(--foreground)" }}
                       >
-                        {globalRecent.map((t, i) => (
+                        {globalRecent.map((t: UserTransaction, i: number) => (
                           <li key={i} className="py-2">
                             <div className="text-[11px] sm:text-xs font-mono opacity-80">
                               {new Date(t.timestamp).toLocaleString()}
                             </div>
-                            <div className="text-xs sm:text-sm font-mono mt-1 leading-relaxed">
-                              <span className="font-semibold">
-                                {resolveName(t.from)}
-                              </span>{" "}
-                              has transfered{" "}
-                              <span
-                                className="font-semibold"
-                                style={{ color: "var(--accent)" }}
-                              >
-                                {t.amount}
-                              </span>{" "}
-                              to{" "}
-                              <span className="font-semibold">
-                                {resolveName(t.to)}
-                              </span>
-                              {t.reason ? (
+                            <div className="text-xs sm:text-sm font-mono mt-1 leading-relaxed break-words">
+                              {t.message ? (
+                                <>{t.message}</>
+                              ) : (
                                 <>
-                                  {" "}
-                                  for{" "}
-                                  <span className="italic font-semibold">
-                                    {t.reason}
+                                  <span className="font-semibold">
+                                    {resolveName(t.from)}
+                                  </span>{" "}
+                                  has transfered{" "}
+                                  <span
+                                    className="font-semibold"
+                                    style={{ color: "var(--accent)" }}
+                                  >
+                                    {t.amount}
+                                  </span>{" "}
+                                  to{" "}
+                                  <span className="font-semibold">
+                                    {resolveName(t.to)}
                                   </span>
+                                  {t.reason ? (
+                                    <>
+                                      {" "}
+                                      for{" "}
+                                      <span className="italic font-semibold">
+                                        {t.reason}
+                                      </span>
+                                    </>
+                                  ) : null}
                                 </>
-                              ) : null}
+                              )}
                             </div>
                           </li>
                         ))}
@@ -688,12 +708,6 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-            </div>
-          </div>
-          {/* Leaderboard Sidebar: sticky on lg in left column; placed after content so it's last on small/medium */}
-          <div className="w-full lg:col-start-1 lg:row-start-1 lg:sticky lg:top-24 self-start min-w-0">
-            <div className="lg:pr-2">
-              <LeaderboardSidebar />
             </div>
           </div>
         </div>

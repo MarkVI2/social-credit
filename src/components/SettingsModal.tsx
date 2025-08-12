@@ -67,7 +67,7 @@ export default function SettingsModal({ user, onClose }: Props) {
 
       {/* Panel */}
       <div
-        className="relative z-10 w-full max-w-lg border-4 p-5 sm:p-6 shadow-[10px_10px_0_0_#28282B]"
+        className="relative z-10 w-full max-w-lg border-4 p-5 sm:p-6 shadow-card-lg"
         style={{
           background: "var(--background)",
           color: "var(--foreground)",
@@ -76,7 +76,10 @@ export default function SettingsModal({ user, onClose }: Props) {
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="font-heading text-xl font-extrabold uppercase text-[#C62828] tracking-wider">
+            <h2
+              className="font-heading text-xl font-extrabold uppercase tracking-wider"
+              style={{ color: "var(--accent)" }}
+            >
               Settings
             </h2>
             <p className="font-mono text-xs opacity-80 mt-1">
@@ -105,7 +108,10 @@ export default function SettingsModal({ user, onClose }: Props) {
               background: "color-mix(in oklab, var(--background) 70%, white)",
             }}
           >
-            <h3 className="font-heading text-sm uppercase tracking-wider text-[#C62828] font-bold">
+            <h3
+              className="font-heading text-sm uppercase tracking-wider font-bold"
+              style={{ color: "var(--accent)" }}
+            >
               Profile
             </h3>
             <ChangePasswordForm email={user?.email || ""} />
@@ -118,7 +124,10 @@ export default function SettingsModal({ user, onClose }: Props) {
               background: "color-mix(in oklab, var(--background) 70%, white)",
             }}
           >
-            <h3 className="font-heading text-sm uppercase tracking-wider text-[#C62828] font-bold">
+            <h3
+              className="font-heading text-sm uppercase tracking-wider font-bold"
+              style={{ color: "var(--accent)" }}
+            >
               Theme
             </h3>
             <div className="mt-2 flex items-center gap-3">
@@ -127,8 +136,8 @@ export default function SettingsModal({ user, onClose }: Props) {
                 aria-pressed={theme === "light"}
                 className={`px-3 py-2 border-4 rounded-none font-bold btn-3d ${
                   theme === "light"
-                    ? "bg-[#F5F5DC] text-[#28282B] border-[#28282B]"
-                    : "bg-white text-[#28282B] border-[#28282B]"
+                    ? "bg-[var(--background)] text-[var(--foreground)] border-[var(--border)]"
+                    : "bg-white text-[var(--foreground)] border-[var(--border)]"
                 }`}
               >
                 Light
@@ -138,8 +147,8 @@ export default function SettingsModal({ user, onClose }: Props) {
                 aria-pressed={theme === "dark"}
                 className={`px-3 py-2 border-4 rounded-none font-bold btn-3d ${
                   theme === "dark"
-                    ? "bg-[#121212] text-[#ededed] border-[#ededed]"
-                    : "bg-[#1d1d1d] text-[#ededed] border-[#ededed]"
+                    ? "bg-[var(--background)] text-[var(--foreground)] border-[var(--border)]"
+                    : "bg-[#1d1d1d] text-[var(--foreground)] border-[var(--border)]"
                 }`}
               >
                 Dark
@@ -194,7 +203,12 @@ function ChangePasswordForm({ email }: { email: string }) {
         type="password"
         value={current}
         onChange={(e) => setCurrent(e.target.value)}
-        className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none"
+        className="w-full px-3 py-2 border-4 rounded-none focus:outline-none"
+        style={{
+          background: "var(--background)",
+          color: "var(--foreground)",
+          borderColor: "var(--border)",
+        }}
         placeholder="Enter current password"
         required
       />
@@ -203,7 +217,12 @@ function ChangePasswordForm({ email }: { email: string }) {
         type="password"
         value={next}
         onChange={(e) => setNext(e.target.value)}
-        className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none"
+        className="w-full px-3 py-2 border-4 rounded-none focus:outline-none"
+        style={{
+          background: "var(--background)",
+          color: "var(--foreground)",
+          borderColor: "var(--border)",
+        }}
         placeholder="Enter new password"
         required
       />
@@ -214,14 +233,24 @@ function ChangePasswordForm({ email }: { email: string }) {
         type="password"
         value={confirm}
         onChange={(e) => setConfirm(e.target.value)}
-        className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none"
+        className="w-full px-3 py-2 border-4 rounded-none focus:outline-none"
+        style={{
+          background: "var(--background)",
+          color: "var(--foreground)",
+          borderColor: "var(--border)",
+        }}
         placeholder="Confirm new password"
         required
       />
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-[#C62828] text-white py-2 px-4 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 disabled:opacity-60 btn-3d"
+        className="w-full py-2 px-4 rounded-none font-bold border-4 hover:opacity-90 disabled:opacity-60 btn-3d"
+        style={{
+          background: "var(--accent)",
+          color: "var(--accent-contrast)",
+          borderColor: "var(--border)",
+        }}
       >
         {loading ? "Updating…" : "Update Password"}
       </button>

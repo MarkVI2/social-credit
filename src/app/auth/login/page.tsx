@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [fpMsg, setFpMsg] = useState("");
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,16 +79,35 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5DC] text-[#28282B] flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ background: "var(--background)", color: "var(--foreground)" }}
+    >
       <div className="w-full max-w-md">
-        <div className="border-4 border-[#28282B] bg-[#F5F5DC] p-6 sm:p-8 shadow-[8px_8px_0_0_#28282B]">
+        <div
+          className="border-4 p-6 sm:p-8 shadow-card"
+          style={{
+            background: "var(--background)",
+            borderColor: "var(--foreground)",
+            color: "var(--foreground)",
+          }}
+        >
           {/* Header */}
           <div className="space-y-1 text-center mb-6">
-            <h1 className="font-heading text-2xl sm:text-3xl font-extrabold uppercase text-[#C62828] tracking-wider">
+            <h1
+              className="font-heading text-2xl sm:text-3xl font-extrabold uppercase tracking-wider"
+              style={{ color: "var(--accent)" }}
+            >
               Login
             </h1>
             <p className="font-mono text-xs sm:text-sm opacity-80">
               Authorized members only. Papers, please.
+            </p>
+            <p className="font-mono text-[11px] sm:text-xs opacity-70 leading-relaxed max-w-sm mx-auto">
+              Social Credit is a collaborative classroom ledger for tracking
+              contributions, friendly transfers, and administrative adjustments.
+              Activity is logged transparently; balances fuel auctions, rewards,
+              and playful economy mechanics.
             </p>
           </div>
 
@@ -95,8 +115,16 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Error message */}
             {error && (
-              <div className="border-4 border-[#C62828] bg-white/60 p-3">
-                <p className="font-mono text-sm text-[#C62828]">{error}</p>
+              <div
+                className="border-4 bg-white/60 p-3"
+                style={{ borderColor: "var(--accent)" }}
+              >
+                <p
+                  className="font-mono text-sm"
+                  style={{ color: "var(--accent)" }}
+                >
+                  {error}
+                </p>
                 {error.toLowerCase().includes("email not verified") && (
                   <div className="mt-2 flex items-center gap-3">
                     <button
@@ -126,7 +154,11 @@ export default function LoginPage() {
                         }
                         setResending(false);
                       }}
-                      className="bg-[#C62828] text-white py-2 px-3 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 disabled:opacity-60 btn-3d text-xs"
+                      className="text-white py-2 px-3 rounded-none font-bold border-4 hover:opacity-90 disabled:opacity-60 btn-3d text-xs"
+                      style={{
+                        background: "var(--accent)",
+                        borderColor: "var(--foreground)",
+                      }}
                     >
                       {resending ? "Resending…" : "Resend verification email"}
                     </button>
@@ -153,7 +185,12 @@ export default function LoginPage() {
                   setIdentifier(e.target.value);
                   setError("");
                 }}
-                className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none focus:ring-0"
+                className="w-full px-3 py-2 border-4 rounded-none focus:outline-none focus:ring-0"
+                style={{
+                  background: "var(--background)",
+                  borderColor: "var(--foreground)",
+                  color: "var(--foreground)",
+                }}
                 placeholder="Enter username or email"
                 required
               />
@@ -163,24 +200,50 @@ export default function LoginPage() {
               <label htmlFor="password" className="block text-sm font-semibold">
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setError("");
-                }}
-                className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none focus:ring-0"
-                placeholder="Enter your password"
-                required
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
+                  className="w-full pr-20 px-3 py-2 border-4 rounded-none focus:outline-none focus:ring-0 font-mono"
+                  style={{
+                    background: "var(--background)",
+                    borderColor: "var(--foreground)",
+                    color: "var(--foreground)",
+                  }}
+                  placeholder="Enter your password"
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-0 flex items-center justify-center px-3 font-mono text-[11px] sm:text-xs border-l-4 btn-3d"
+                  style={{
+                    background: "var(--background)",
+                    borderColor: "var(--foreground)",
+                    color: "var(--foreground)",
+                  }}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#C62828] text-white py-3 px-4 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 disabled:opacity-60 btn-3d"
+              className="w-full text-white py-3 px-4 rounded-none font-bold border-4 hover:opacity-90 disabled:opacity-60 btn-3d"
+              style={{
+                background: "var(--accent)",
+                borderColor: "var(--foreground)",
+              }}
             >
               {isLoading ? "Signing In..." : "Sign In"}
             </button>
@@ -211,7 +274,10 @@ export default function LoginPage() {
           </div>
 
           {showForgot && (
-            <div className="mt-3 border-4 border-[#28282B] bg-white/60 p-3">
+            <div
+              className="mt-3 border-4 bg-white/60 p-3"
+              style={{ borderColor: "var(--foreground)" }}
+            >
               <form
                 onSubmit={async (event) => {
                   event.preventDefault();
@@ -239,13 +305,22 @@ export default function LoginPage() {
                   type="text"
                   value={fpIdentifier}
                   onChange={(e) => setFpIdentifier(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#F5F5DC] border-4 border-[#28282B] rounded-none text-[#28282B] placeholder-[#28282B]/60 focus:outline-none"
+                  className="w-full px-3 py-2 border-4 rounded-none focus:outline-none"
+                  style={{
+                    background: "var(--background)",
+                    borderColor: "var(--foreground)",
+                    color: "var(--foreground)",
+                  }}
                   placeholder="Enter username or email"
                   required
                 />
                 <button
                   type="submit"
-                  className="w-full bg-[#C62828] text-white py-2 px-4 rounded-none font-bold border-4 border-[#28282B] hover:opacity-90 btn-3d"
+                  className="w-full text-white py-2 px-4 rounded-none font-bold border-4 hover:opacity-90 btn-3d"
+                  style={{
+                    background: "var(--accent)",
+                    borderColor: "var(--foreground)",
+                  }}
                 >
                   Send Reset Link
                 </button>

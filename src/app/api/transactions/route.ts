@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
 
     // Log transaction after completion
     await logTransaction({
-      from: fromUser.username || fromUser.email,
-      to: toUser.username || toUser.email,
+      from: fromUser.username,
+      to: toUser.username,
       amount,
       reason,
       timestamp: new Date(),
