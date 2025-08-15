@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Oswald } from "next/font/google";
 import LeaderboardEntry, { LeaderboardEntryData } from "./LeaderboardEntry";
+import { useLeaderboard } from "@/hooks/useLeaderboard";
 
 const oswald = Oswald({ subsets: ["latin"], weight: ["500", "600", "700"] });
 
@@ -15,46 +15,10 @@ export default function LeaderboardSidebar({
   /** Fix badge width for perfect column alignment */
   fixedBadgeWidth?: boolean;
 }) {
-  const [data, setData] = useState<LeaderboardEntryData[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchLeaderboard = async (showLoading = false) => {
-      try {
-        if (showLoading) setLoading(true);
-        const res = await fetch("/api/leaderboard", { cache: "no-store" });
-        if (!res.ok) throw new Error("Network error");
-        const json = await res.json();
-        if (!mounted) return;
-        if (json.success) {
-          setData(json.users as LeaderboardEntryData[]);
-          setError(null);
-        } else {
-          setError(json.message || "Failed to load leaderboard");
-        }
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (mounted) setError(msg);
-      } finally {
-        if (mounted && showLoading) setLoading(false);
-      }
-    };
-
-    // Initial fetch with loading state
-    fetchLeaderboard(true);
-    // Refresh every 5 minutes without toggling loading to avoid flicker
-    const interval = setInterval(() => fetchLeaderboard(false), 60 * 1000);
-
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-  const items = data || [];
+  const { data: leaderboardData, isLoading: loading, error } = useLeaderboard();
+  
+  const items = (leaderboardData?.users || []) as LeaderboardEntryData[];
+  const errorMessage = error?.message || null;
 
   return (
     <aside
@@ -89,16 +53,16 @@ export default function LeaderboardSidebar({
       {loading && (
         <div className="font-mono text-xs py-4">Loading leaderboard…</div>
       )}
-      {error && !loading && (
+      {errorMessage && !loading && (
         <div
           className="font-mono text-xs py-4"
           style={{ color: "var(--accent)" }}
         >
-          {error}
+          {errorMessage}
         </div>
       )}
 
-      {!loading && !error && (
+      {!loading && !errorMessage && (
         <ul className="flex flex-col gap-2 sm:gap-3 overflow-x-hidden">
           {items.map((u, idx) => (
             <LeaderboardEntry

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import BackHomeButton from "@/components/BackHomeButton";
+import { useAdmin } from "@/hooks/useAdmin";
 import {
   IconExchange,
   IconCoin,
@@ -30,108 +30,9 @@ interface ActivityLogEntry {
 }
 
 export default function AdminActivityPage() {
-  const [items, setItems] = useState<ActivityLogEntry[]>([]);
-  // External cursor state no longer needed (using ref); retained only if UI display needed later
-  // Removed unused cursor state to satisfy lint
-  // Keep an internal mutable cursor to avoid recreating callbacks & effects
-  const cursorRef = useRef(0);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const loadingRef = useRef<HTMLDivElement | null>(null);
-  const lastFetchRef = useRef(0); // throttle timestamp
-  const THROTTLE_MS = 1000; // minimum ms between sequential fetches
-
-  const load = useCallback(
-    async (reset = false) => {
-      const now = Date.now();
-      if (loading) return; // respect current in-flight
-      if (!reset && now - lastFetchRef.current < THROTTLE_MS) return; // throttle successive scroll hits
-      lastFetchRef.current = now;
-      const start = reset ? 0 : cursorRef.current;
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `/api/admin/activity?cursor=${start}&limit=40`,
-          {
-            cache: "no-store",
-          }
-        );
-        if (res.status === 401) {
-          window.location.href = "/auth/login";
-          return;
-        }
-        const data = await res.json();
-        if (data.success) {
-          type RawId = { $oid: string } | string | undefined;
-          interface RawActivity {
-            _id?: RawId;
-            createdAt?: string | Date;
-            type?: string;
-            action?: string;
-            data?: BaseActivityData | null;
-            message?: string;
-            undone?: boolean;
-          }
-          const newItems: ActivityLogEntry[] = (
-            data.items as RawActivity[]
-          ).map((raw) => {
-            const idSource = raw._id;
-            const resolvedId =
-              typeof idSource === "string"
-                ? idSource
-                : idSource && typeof idSource === "object" && "$oid" in idSource
-                ? (idSource as { $oid: string }).$oid
-                : Math.random().toString(36).slice(2);
-            const createdAtVal = raw.createdAt;
-            return {
-              _id: resolvedId,
-              type: raw.type || "unknown",
-              action: raw.action || "unknown",
-              data: raw.data ?? null,
-              message: raw.message,
-              undone: raw.undone,
-              createdAt:
-                typeof createdAtVal === "string"
-                  ? createdAtVal
-                  : createdAtVal instanceof Date
-                  ? createdAtVal.toISOString()
-                  : new Date().toISOString(),
-            } as ActivityLogEntry;
-          });
-          setItems((prev) => (reset ? newItems : [...prev, ...newItems]));
-          const next = data.nextCursor || start + newItems.length;
-          // Update internal cursor ref for pagination
-          cursorRef.current = next;
-          if (!newItems.length || next >= data.total) setHasMore(false);
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
-    [loading]
-  );
-
-  // Initial load only once
-  useEffect(() => {
-    load(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!hasMore) return;
-    const el = loadingRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) load();
-        });
-      },
-      { rootMargin: "200px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [load, hasMore]);
+  // Use tRPC hook for activity data
+  const { data: activityData, isLoading: loading } = useAdmin().getActivity(0, 50);
+  const items = (activityData?.items || [] as unknown) as ActivityLogEntry[];
 
   return (
     <div
@@ -196,14 +97,6 @@ export default function AdminActivityPage() {
                 </li>
               ))}
             </ul>
-          )}
-          {hasMore && (
-            <div
-              ref={loadingRef}
-              className="py-4 text-center font-mono text-xs opacity-70"
-            >
-              {loading ? "Loading…" : "Load more"}
-            </div>
           )}
         </div>
       </div>
