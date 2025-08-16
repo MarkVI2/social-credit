@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Oswald, JetBrains_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
+import { TRPCReactProvider } from "@/trpc/client";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -39,16 +40,18 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const theme = cookieStore.get("theme")?.value === "dark" ? "dark" : "light";
   return (
-    <html
-      lang="en"
-      className={theme === "dark" ? "dark" : "light"}
-      suppressHydrationWarning
-    >
-      <body
-        className={`${inter.variable} ${oswald.variable} ${jbMono.variable} antialiased`}
+    <TRPCReactProvider>
+      <html
+        lang="en"
+        className={theme === "dark" ? "dark" : "light"}
+        suppressHydrationWarning
       >
-        {children}
-      </body>
-    </html>
+        <body
+          className={`${inter.variable} ${oswald.variable} ${jbMono.variable} antialiased`}
+        >
+          {children}
+        </body>
+      </html>
+    </TRPCReactProvider>
   );
 }

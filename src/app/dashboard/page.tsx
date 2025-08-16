@@ -4,6 +4,11 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
 import SettingsModal from "@/components/SettingsModal";
+import { IconLogout } from "@tabler/icons-react";
+import { useUsers } from "@/hooks/useUsers";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useAuth } from "@/hooks/useAuth";
+
 // Transaction item shape (user + global recent logs)
 interface UserTransaction {
   timestamp: string | Date;
@@ -13,42 +18,27 @@ interface UserTransaction {
   reason?: string;
   message?: string;
 }
-import { IconLogout } from "@tabler/icons-react";
-
-interface User {
-  _id: string;
-  username: string;
-  email: string;
-  createdAt: string;
-  credits?: number;
-}
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [balance, setBalance] = useState<number>(0);
-  const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [reason, setReason] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
-  const [recent, setRecent] = useState<
-    Array<{
-      timestamp: string;
-      from: string;
-      to: string;
-      amount: number;
-      reason?: string;
-    }>
-  >([]);
-  const [globalRecent, setGlobalRecent] = useState<
-    Array<{
-      timestamp: string | Date;
-      from: string;
-      to: string;
-      amount: number;
-      reason?: string;
-    }>
-  >([]);
+  
+  // Use tRPC hooks
+  const { user, balance, isLoading: authLoading } = useAuth();
+  const { allUsers: users } = useUsers();
+  const { 
+    transactionHistory, 
+    getGlobalHistory, 
+    transfer, 
+    isTransferring 
+  } = useTransactions();
+  
+  // Get global history
+  const globalHistoryQuery = getGlobalHistory(10);
+  const recent = (transactionHistory.data?.items || [] as unknown) as UserTransaction[];
+  const globalRecent = (globalHistoryQuery.data?.items || [] as unknown) as UserTransaction[];
 
   // Map emails to usernames for display; keep usernames as-is
   const emailToUsername = useMemo(() => {
@@ -107,206 +97,26 @@ export default function DashboardPage() {
   const isValidReason = reason.trim().length > 0;
   const canSubmit = isValidUser && isValidReason;
 
-  // Refresh current user from DB and sync credits
-  const refreshCurrentUser = useCallback(async () => {
-    try {
-      if (!user) return;
-      // Query users API and find the current user
-      const res = await fetch("/api/users", { cache: "no-store" });
-      const data = await res.json();
-      if (data.success) {
-        const fresh = (data.users as User[]).find(
-          (u) => u.username === user.username || u.email === user.email
-        );
-        if (fresh && typeof fresh.credits === "number") {
-          setBalance(Math.trunc(fresh.credits));
-          const currentCredits = user?.credits;
-          if (currentCredits !== fresh.credits) {
-            const stored: User & { credits: number } = {
-              ...user,
-              credits: fresh.credits,
-            } as User & { credits: number };
-            try {
-              localStorage.setItem("currentUser", JSON.stringify(stored));
-            } catch {}
-            setUser(stored);
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Failed to refresh user", e);
+  // Check authentication
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/auth/login");
+    } else if (user?.role === 'admin') {
+      router.push("/admin");
     }
-  }, [user]);
-
-  useEffect(() => {
-    // Try to load current user from localStorage (temporary client-side session)
-    try {
-      const stored =
-        typeof window !== "undefined" && localStorage.getItem("currentUser");
-      if (stored) {
-        const u = JSON.parse(stored);
-        // If admin, bounce to /admin
-        if ((u.role || "user").toLowerCase() === "admin") {
-          router.push("/admin");
-          return;
-        }
-        setUser(u);
-        if (typeof u.credits === "number") setBalance(Math.trunc(u.credits));
-        return;
-      }
-    } catch {}
-    // No fallback mock; redirect to login if no user found
-    router.push("/auth/login");
-  }, [router]);
-
-  useEffect(() => {
-    fetch("/api/users", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setUsers(data.users);
-          // If current user exists, sync balance from API
-          if (user) {
-            const fresh = (data.users as User[]).find(
-              (u) => u.username === user.username || u.email === user.email
-            );
-            if (fresh && typeof fresh.credits === "number") {
-              setBalance(Math.trunc(fresh.credits));
-              const currentCredits = user?.credits;
-              if (currentCredits !== fresh.credits) {
-                const stored: User & { credits: number } = {
-                  ...user,
-                  credits: fresh.credits,
-                } as User & { credits: number };
-                try {
-                  localStorage.setItem("currentUser", JSON.stringify(stored));
-                } catch {}
-                setUser(stored);
-              }
-            }
-          }
-        }
-      })
-      .catch((err) => console.error("Error fetching users:", err));
-  }, [user?.username, user?.email, user]);
-
-  // Once user is set, do an initial refresh to ensure balance is up-to-date
-  useEffect(() => {
-    if (user) {
-      refreshCurrentUser();
-    }
-  }, [user, refreshCurrentUser]);
-
-  // Periodically refresh balance every 1 minute
-  useEffect(() => {
-    if (!user) return;
-    const id = setInterval(() => {
-      refreshCurrentUser();
-    }, 60 * 1000);
-    return () => clearInterval(id);
-  }, [user, refreshCurrentUser]);
-
-  // Fetch recent transactions for the logged-in user
-  const fetchRecent = useCallback(async () => {
-    if (!user) return;
-    try {
-      const idCandidate =
-        typeof (user as unknown as { _id?: unknown })._id === "string"
-          ? ((user as unknown as { _id?: string })._id as string)
-          : "";
-      const isValidObjectId = /^[a-fA-F0-9]{24}$/.test(idCandidate);
-      const url = isValidObjectId
-        ? `/api/transactions?userId=${idCandidate}&limit=10`
-        : `/api/transactions?username=${encodeURIComponent(
-            user.username
-          )}&limit=10`;
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) {
-        console.error("[RecentTx] HTTP error", res.status, res.statusText);
-      }
-      const data = await res.json();
-      if (data.success) {
-        setRecent(data.items);
-      } else {
-        console.error("[RecentTx] API error:", data.message || data);
-      }
-    } catch (e) {
-      console.error("[RecentTx] Failed to load transactions", e);
-    }
-  }, [user]);
-
-  // Fetch global recent transactions
-  const fetchGlobalRecent = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/transactions?limit=10`, {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        console.error(
-          "[GlobalRecentTx] HTTP error",
-          res.status,
-          res.statusText
-        );
-      }
-      const data = await res.json();
-      if (data.success) setGlobalRecent(data.items);
-      else console.error("[GlobalRecentTx] API error:", data.message || data);
-    } catch (e) {
-      console.error("[GlobalRecentTx] Failed to load transactions", e);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchRecent();
-    fetchGlobalRecent();
-  }, [fetchRecent, fetchGlobalRecent]);
-
-  // Optional: light polling so incoming transactions appear without manual refresh (reduced to 60s to limit load)
-  useEffect(() => {
-    if (!user) return;
-    const id = setInterval(() => {
-      fetchRecent();
-    }, 60 * 1000);
-    return () => clearInterval(id);
-  }, [user, fetchRecent]);
-
-  // Poll global recent as well (reduced to 60s)
-  useEffect(() => {
-    const id = setInterval(() => {
-      fetchGlobalRecent();
-    }, 60 * 1000);
-    return () => clearInterval(id);
-  }, [fetchGlobalRecent]);
+  }, [user, authLoading, router]);
 
   const handleSend = async () => {
     const target = users.find(
       (u) => u.username === selectedUser || u.email === selectedUser
     );
     if (!user || !target) return;
+    
     try {
-      const res = await fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: user.username,
-          to: target.username,
-          reason,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        // Reduce local balance by 2 and clear reason
-        setBalance((b) => Math.max(0, Math.trunc(b) - 2));
-        setReason("");
-        // Refresh current user credits from server
-        await refreshCurrentUser();
-        // Immediately refresh recent transactions list
-        await fetchRecent();
-      } else {
-        console.error("[Send] API error:", data.message || data);
-      }
+      await transfer(target.username, reason);
+      setReason("");
     } catch (e) {
-      console.error("[Send] Network or unexpected error", e);
+      console.error("[Send] Transfer error", e);
     }
   };
   // const handleRequest = () => {
@@ -329,7 +139,7 @@ export default function DashboardPage() {
     router.push("/auth/login");
   };
 
-  if (!user) {
+  if (authLoading || !user) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -565,15 +375,15 @@ export default function DashboardPage() {
                 </button> */}
                 <button
                   onClick={handleSend}
-                  disabled={!canSubmit}
-                  aria-disabled={!canSubmit}
+                  disabled={!canSubmit || isTransferring}
+                  aria-disabled={!canSubmit || isTransferring}
                   className="flex-1 text-white py-2 sm:py-2.5 px-3 sm:px-3.5 rounded-none font-bold border-4 hover:opacity-90 btn-3d disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none"
                   style={{
                     background: "var(--accent)",
                     borderColor: "var(--foreground)",
                   }}
                 >
-                  Send 2 credits
+                  {isTransferring ? "Sending..." : "Send 2 credits"}
                 </button>
               </div>
               {!canSubmit && (

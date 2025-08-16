@@ -2,30 +2,33 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
-import { useRouter } from "next/navigation";
 import { IconSearch, IconSun, IconMoon } from "@tabler/icons-react";
 import Link from "next/link";
-
-type AdminUser = {
-  _id: string;
-  username: string;
-  email: string;
-  credits?: number;
-  role?: string;
-};
+import { useAdmin } from "@/hooks/useAdmin";
 
 export default function AdminPage() {
-  const router = useRouter();
-  const [token, setToken] = useState<string>("");
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState<AdminUser[]>([]);
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
   const limit = 20;
+  
+  // Use tRPC hook for users data
+  const { data: usersData, isLoading: loading } = useAdmin().getUsers(query, page, limit);
+  const users = usersData?.items || [];
+  const total = usersData?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
+  
   // theme
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  // Keep minimal token state for components that still need it
+  const [token, setToken] = useState<string>("");
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("auth_token");
+      const cookieToken = raw || "";
+      setToken(cookieToken);
+    } catch {}
+  }, []);
   useEffect(() => {
     try {
       const stored = localStorage.getItem("theme");
@@ -39,6 +42,7 @@ export default function AdminPage() {
       }
     } catch {}
   }, []);
+
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
       const next = prev === "light" ? "dark" : "light";
@@ -50,48 +54,6 @@ export default function AdminPage() {
       return next;
     });
   }, []);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("auth_token");
-      const cookieToken = raw || "";
-      setToken(cookieToken);
-    } catch {}
-  }, []);
-
-  const fetchUsers = useCallback(
-    async (p = 1, q = "") => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `/api/admin/users?page=${p}&limit=${limit}&query=${encodeURIComponent(
-            q
-          )}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-            cache: "no-store",
-          }
-        );
-        if (res.status === 401) router.push("/auth/login");
-        const data = await res.json();
-        if (data.success) {
-          setUsers(data.items);
-          setTotal(data.total);
-          setPage(data.page);
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
-    [limit, router, token]
-  );
-
-  useEffect(() => {
-    const id = setTimeout(() => {
-      void fetchUsers(1, query);
-    }, 250);
-    return () => clearTimeout(id);
-  }, [query, fetchUsers]);
 
   const header = useMemo(
     () => (
@@ -200,7 +162,7 @@ export default function AdminPage() {
         </div>
       </div>
     ),
-    [token, theme, toggleTheme]
+    [theme, toggleTheme, token]
   );
 
   return (
@@ -215,7 +177,7 @@ export default function AdminPage() {
           {/* Left column (leaderboard + recent transactions) */}
           <div className="flex flex-col gap-4 w-full lg:w-80 xl:w-96 flex-shrink-0 order-1 lg:order-none">
             <LeaderboardSidebar forceRowEntries fixedBadgeWidth />
-            <AdminRecentTransactions token={token} />
+            <AdminRecentTransactions />
           </div>
 
           {/* Right column (search + users table) */}
@@ -233,7 +195,9 @@ export default function AdminPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") fetchUsers(1, query);
+                    if (e.key === "Enter") {
+                      setPage(1); // Reset to first page on new search
+                    }
                   }}
                   placeholder="Search by username or email"
                   className="flex-1 min-w-0 px-3 py-2 border-4 rounded-none"
@@ -243,7 +207,7 @@ export default function AdminPage() {
                   }}
                 />
                 <button
-                  onClick={() => fetchUsers(1, query)}
+                  onClick={() => setPage(1)}
                   className="border-4 btn-3d w-10 h-10 flex items-center justify-center shrink-0"
                   style={{
                     background: "var(--accent)",
@@ -277,7 +241,7 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {users.map((u) => (
-                      <tr key={u._id} className="odd:bg-white/30">
+                      <tr key={u._id?.toString() || Math.random().toString()} className="odd:bg-white/30">
                         <td className="p-2 align-top">
                           <div className="font-mono text-sm">{u.username}</div>
                           <div
@@ -301,10 +265,11 @@ export default function AdminPage() {
                         <td className="p-2 text-center">{u.role || "user"}</td>
                         <td className="p-2 text-right">
                           <InlineGrant
-                            userId={u._id}
+                            userId={u._id?.toString() || ""}
                             username={u.username}
-                            token={token}
-                            onDone={() => fetchUsers(page, query)}
+                            onDone={() => {
+                              // tRPC will automatically refetch when data changes
+                            }}
                           />
                         </td>
                       </tr>
@@ -323,7 +288,7 @@ export default function AdminPage() {
               <div className="flex items-center justify-between">
                 <button
                   disabled={page <= 1}
-                  onClick={() => fetchUsers(page - 1, query)}
+                  onClick={() => setPage(page - 1)}
                   className="border-4 px-3 py-1 btn-3d disabled:opacity-60"
                   style={{
                     background: "var(--background)",
@@ -337,7 +302,7 @@ export default function AdminPage() {
                 </div>
                 <button
                   disabled={page >= totalPages}
-                  onClick={() => fetchUsers(page + 1, query)}
+                  onClick={() => setPage(page + 1)}
                   className="border-4 px-3 py-1 btn-3d disabled:opacity-60"
                   style={{
                     background: "var(--background)",
@@ -358,50 +323,35 @@ export default function AdminPage() {
 function InlineGrant({
   userId,
   username,
-  token,
   onDone,
 }: {
   userId: string;
   username: string;
-  token: string;
   onDone: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState<number>(0);
   const [reason, setReason] = useState("");
   const [source, setSource] = useState<"admin" | "classBank">("admin");
-  const [submitting, setSubmitting] = useState(false);
+  
+  // Use tRPC hook for updating credits
+  const { updateCredits, isUpdatingCredits } = useAdmin();
 
   async function submit() {
-    setSubmitting(true);
     try {
-      const res = await fetch("/api/admin/update-credits", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          targetUserId: userId,
-          amount,
-          sourceAccount: source,
-          reason,
-        }),
+      await updateCredits.mutateAsync({
+        targetUserId: userId,
+        amount,
+        sourceAccount: source,
+        reason,
       });
-      const data = await res.json();
-      if (data.success) {
-        setOpen(false);
-        setAmount(0);
-        setReason("");
-        onDone();
-      } else {
-        alert(data.message || "Failed");
-      }
+      setOpen(false);
+      setAmount(0);
+      setReason("");
+      onDone();
     } catch (e) {
       console.error(e);
-      alert("Network error");
-    } finally {
-      setSubmitting(false);
+      alert(e || "Failed to update credits");
     }
   }
 
@@ -484,7 +434,7 @@ function InlineGrant({
           />
           <div className="flex gap-2 justify-end">
             <button
-              disabled={submitting}
+              disabled={isUpdatingCredits}
               onClick={() => setOpen(false)}
               className="border-4 px-2 py-1 btn-3d disabled:opacity-60"
               style={{
@@ -495,7 +445,7 @@ function InlineGrant({
               Cancel
             </button>
             <button
-              disabled={submitting || !amount || !reason}
+              disabled={isUpdatingCredits || !amount || !reason}
               onClick={submit}
               className="border-4 px-3 py-1 btn-3d disabled:opacity-60"
               style={{
@@ -504,7 +454,7 @@ function InlineGrant({
                 color: "white",
               }}
             >
-              {submitting ? "Saving…" : "Submit"}
+              {isUpdatingCredits ? "Saving…" : "Submit"}
             </button>
           </div>
         </div>
@@ -673,7 +623,7 @@ function AdminAvatar({
   );
 }
 
-function AdminRecentTransactions({ token }: { token: string }) {
+function AdminRecentTransactions() {
   interface ActivityItemData {
     from?: string;
     to?: string;
@@ -691,30 +641,10 @@ function AdminRecentTransactions({ token }: { token: string }) {
     message?: string;
     data?: ActivityItemData | null;
   }
-  const [items, setItems] = useState<ActivityItem[]>([]);
-
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/admin/activity?cursor=0&limit=15`, {
-        cache: "no-store",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      const data = await res.json();
-      if (data.success) setItems(data.items || []);
-      else
-        console.error("[AdminRecentActivity] API error:", data.message || data);
-    } catch (e) {
-      console.error("[AdminRecentActivity] Failed to fetch", e);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    load();
-    // Refresh every 10 minutes instead of aggressive polling to reduce DB/API load
-    const TEN_MIN = 10 * 60 * 1000;
-    const id = setInterval(load, TEN_MIN);
-    return () => clearInterval(id);
-  }, [load]);
+  
+  // Use tRPC hook instead of manual fetch
+  const { data: activityData, isLoading, refetch } = useAdmin().getActivity(0, 15);
+  const items = (activityData?.items || [] as unknown) as ActivityItem[];
 
   return (
     <div
@@ -733,7 +663,7 @@ function AdminRecentTransactions({ token }: { token: string }) {
           Recent Activity
         </h3>
         <button
-          onClick={load}
+          onClick={() => refetch()}
           className="border-4 px-2 py-0.5 font-mono text-[10px] sm:text-xs btn-3d rounded-none"
           style={{
             background: "var(--background)",
@@ -746,9 +676,11 @@ function AdminRecentTransactions({ token }: { token: string }) {
         </button>
       </div>
       <p className="font-mono text-[10px] sm:text-[11px] opacity-60 mb-2 leading-snug">
-        Auto-refresh every 10 minutes to conserve resources.
+        Real-time activity updates via tRPC.
       </p>
-      {items.length === 0 ? (
+      {isLoading ? (
+        <div className="font-mono text-xs opacity-80">Loading activity...</div>
+      ) : items.length === 0 ? (
         <div className="font-mono text-xs opacity-80">No activity yet.</div>
       ) : (
         <div className="max-h-72 overflow-y-auto pr-1">
