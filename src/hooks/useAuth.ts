@@ -56,7 +56,11 @@ export function useAuth() {
       if (data.success) {
         const fresh = (data.users as User[]).find(
           (u) => u.username === user.username || u.email === user.email
-        );
+      // Query new user API to get the current user
+      const res = await fetch("/api/user", { cache: "no-store" });
+      const data = await res.json();
+      if (data.success && data.user) {
+        const fresh = data.user as User;
         if (fresh && typeof fresh.credits === "number") {
           setBalance(Math.trunc(fresh.credits));
           const currentCredits = user?.credits;
