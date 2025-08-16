@@ -50,12 +50,6 @@ export function useAuth() {
     setIsAuthenticated(true);
     try {
       if (!user) return;
-      // Query users API and find the current user
-      const res = await fetch("/api/users", { cache: "no-store" });
-      const data = await res.json();
-      if (data.success) {
-        const fresh = (data.users as User[]).find(
-          (u) => u.username === user.username || u.email === user.email
       // Query new user API to get the current user
       const res = await fetch("/api/user", { cache: "no-store" });
       const data = await res.json();
