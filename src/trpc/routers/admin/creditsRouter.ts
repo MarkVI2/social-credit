@@ -22,7 +22,7 @@ export const creditsRouter = createTRPCRouter({
     .input(
       z.object({
         targetUserId: z.string().min(1, 'Target user ID is required'),
-        amount: z.number().refine(val => Number.isFinite(val) && val !== 0, 'Amount must be a non-zero number'),
+        amount: z.number().refine(val => Number.isFinite(val) && val !== 0, 'Amount must be a non-zero finite number'),
         sourceAccount: z.enum(['admin', 'classBank']),
         reason: z.string().min(1, 'Reason is required'),
       })
