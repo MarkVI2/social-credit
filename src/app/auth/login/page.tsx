@@ -185,6 +185,7 @@ export default function LoginPage() {
                   setIdentifier(e.target.value);
                   setError("");
                 }}
+                disabled={isLoading}
                 className="w-full px-3 py-2 border-4 rounded-none focus:outline-none focus:ring-0"
                 style={{
                   background: "var(--background)",
@@ -209,6 +210,7 @@ export default function LoginPage() {
                     setPassword(e.target.value);
                     setError("");
                   }}
+                  disabled={isLoading}
                   className="w-full pr-20 px-3 py-2 border-4 rounded-none focus:outline-none focus:ring-0 font-mono"
                   style={{
                     background: "var(--background)",
@@ -245,7 +247,7 @@ export default function LoginPage() {
                 borderColor: "var(--foreground)",
               }}
             >
-              {isLoading ? "Signing In..." : "Sign In"}
+              {isLoading ? "Signing In…" : "Sign In"}
             </button>
           </form>
 

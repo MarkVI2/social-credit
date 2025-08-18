@@ -8,6 +8,7 @@ import { IconLogout } from "@tabler/icons-react";
 import { useUsers } from "@/hooks/useUsers";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
+//
 
 // Transaction item shape (user + global recent logs)
 interface UserTransaction {
@@ -24,21 +25,19 @@ export default function DashboardPage() {
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [reason, setReason] = useState<string>("");
   const [showSettings, setShowSettings] = useState(false);
-  
+
   // Use tRPC hooks
   const { user, balance, isLoading: authLoading } = useAuth();
   const { allUsers: users } = useUsers();
-  const { 
-    transactionHistory, 
-    getGlobalHistory, 
-    transfer, 
-    isTransferring 
-  } = useTransactions();
-  
+  const { transactionHistory, getGlobalHistory, transfer, isTransferring } =
+    useTransactions();
+
   // Get global history
   const globalHistoryQuery = getGlobalHistory(10);
-  const recent = (transactionHistory.data?.items || [] as unknown) as UserTransaction[];
-  const globalRecent = (globalHistoryQuery.data?.items || [] as unknown) as UserTransaction[];
+  const recent = (transactionHistory.data?.items ||
+    ([] as unknown)) as UserTransaction[];
+  const globalRecent = (globalHistoryQuery.data?.items ||
+    ([] as unknown)) as UserTransaction[];
 
   // Map emails to usernames for display; keep usernames as-is
   const emailToUsername = useMemo(() => {
@@ -101,7 +100,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/auth/login");
-    } else if (user?.role === 'admin') {
+    } else if (user?.role === "admin") {
       router.push("/admin");
     }
   }, [user, authLoading, router]);
@@ -111,7 +110,7 @@ export default function DashboardPage() {
       (u) => u.username === selectedUser || u.email === selectedUser
     );
     if (!user || !target) return;
-    
+
     try {
       await transfer(target.username, reason);
       setReason("");
@@ -203,6 +202,19 @@ export default function DashboardPage() {
                       <p className="font-mono text-xs sm:text-sm mt-1 opacity-80 break-words whitespace-normal">
                         Control panel of the credit collective
                       </p>
+                      <div className="mt-2">
+                        <button
+                          onClick={() => router.push("/marketplace")}
+                          className="px-2 py-1 border-2 rounded-none font-mono text-xs sm:text-sm"
+                          style={{
+                            background: "transparent",
+                            color: "var(--foreground)",
+                            borderColor: "var(--foreground)",
+                          }}
+                        >
+                          Visit People’s Marketplace
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-start">
@@ -218,36 +230,6 @@ export default function DashboardPage() {
                       <IconLogout size={24} stroke={2} />
                     </button>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Balance */}
-            <div className="w-full">
-              <div
-                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card"
-                style={{
-                  background: "var(--background)",
-                  color: "var(--foreground)",
-                  borderColor: "var(--foreground)",
-                }}
-              >
-                <div className="text-center space-y-3">
-                  <h2
-                    className="font-heading text-base sm:text-lg md:text-xl font-extrabold uppercase tracking-wider"
-                    style={{ color: "var(--accent)" }}
-                  >
-                    Current Balance
-                  </h2>
-                  <div
-                    className="text-3xl sm:text-4xl font-bold font-mono tabular-nums"
-                    style={{ color: "var(--accent)" }}
-                  >
-                    {Math.trunc(balance).toLocaleString("en-IN")}
-                  </div>
-                  <p className="font-mono text-xs sm:text-sm opacity-80">
-                    Current Balance (credits)
-                  </p>
                 </div>
               </div>
             </div>
@@ -416,107 +398,61 @@ export default function DashboardPage() {
                 >
                   Recent Transactions
                 </h3>
-                {recent.length === 0 ? (
+                {globalHistoryQuery.isLoading ? (
                   <div className="text-center py-6">
-                    <p className="font-mono opacity-80">
-                      No transactions yet. Start by sending or receiving money!
-                    </p>
+                    <p className="font-mono opacity-80">Loading activity…</p>
+                  </div>
+                ) : globalRecent.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="font-mono opacity-80">No activity yet.</p>
                   </div>
                 ) : (
-                  <ul
-                    className="divide-y-2"
-                    style={{ borderColor: "var(--foreground)" }}
-                  >
-                    {recent.map((t: UserTransaction, i: number) => (
-                      <li
-                        key={i}
-                        className="py-2 flex items-center justify-between"
-                      >
-                        <div className="text-xs sm:text-sm font-mono opacity-80">
-                          {new Date(t.timestamp).toLocaleString()}
-                        </div>
-                        <div className="flex-1 px-2 text-xs sm:text-sm truncate">
-                          {t.message ? (
-                            <span title={t.message}>{t.message}</span>
-                          ) : (
-                            <>
-                              {resolveName(t.from)} → {resolveName(t.to)}{" "}
-                              {t.reason ? `· ${t.reason}` : ""}
-                            </>
-                          )}
-                        </div>
-                        <div
-                          className={`text-xs sm:text-sm font-mono tabular-nums ${
-                            t.amount >= 0 ? "text-success" : "text-danger"
-                          }`}
-                        >
-                          {t.amount >= 0 ? "+" : ""}
-                          {t.amount}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="max-h-72 overflow-y-auto pr-1">
+                    <ul
+                      className="divide-y-2"
+                      style={{ borderColor: "var(--foreground)" }}
+                    >
+                      {globalRecent.map((t: UserTransaction, i: number) => (
+                        <li key={i} className="py-2">
+                          <div className="text-[11px] sm:text-xs font-mono opacity-80">
+                            {new Date(t.timestamp).toLocaleString()}
+                          </div>
+                          <div className="text-xs sm:text-sm font-mono mt-1 leading-relaxed break-words">
+                            {t.message ? (
+                              <>{t.message}</>
+                            ) : (
+                              <>
+                                <span className="font-semibold">
+                                  {resolveName(t.from)}
+                                </span>{" "}
+                                has transfered{" "}
+                                <span
+                                  className="font-semibold"
+                                  style={{ color: "var(--accent)" }}
+                                >
+                                  {t.amount}
+                                </span>{" "}
+                                to{" "}
+                                <span className="font-semibold">
+                                  {resolveName(t.to)}
+                                </span>
+                                {t.reason ? (
+                                  <>
+                                    {" "}
+                                    for{" "}
+                                    <span className="italic font-semibold">
+                                      {t.reason}
+                                    </span>
+                                  </>
+                                ) : null}
+                              </>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
-
-                {/* Global log below, scrollable */}
-                <div
-                  className="mt-4 pt-3 border-t-2"
-                  style={{ borderColor: "var(--foreground)" }}
-                >
-                  {globalRecent.length === 0 ? (
-                    <div className="text-center py-3">
-                      <p className="font-mono text-xs opacity-80">
-                        No global activity yet.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="max-h-72 overflow-y-auto pr-1">
-                      <ul
-                        className="divide-y-2"
-                        style={{ borderColor: "var(--foreground)" }}
-                      >
-                        {globalRecent.map((t: UserTransaction, i: number) => (
-                          <li key={i} className="py-2">
-                            <div className="text-[11px] sm:text-xs font-mono opacity-80">
-                              {new Date(t.timestamp).toLocaleString()}
-                            </div>
-                            <div className="text-xs sm:text-sm font-mono mt-1 leading-relaxed break-words">
-                              {t.message ? (
-                                <>{t.message}</>
-                              ) : (
-                                <>
-                                  <span className="font-semibold">
-                                    {resolveName(t.from)}
-                                  </span>{" "}
-                                  has transfered{" "}
-                                  <span
-                                    className="font-semibold"
-                                    style={{ color: "var(--accent)" }}
-                                  >
-                                    {t.amount}
-                                  </span>{" "}
-                                  to{" "}
-                                  <span className="font-semibold">
-                                    {resolveName(t.to)}
-                                  </span>
-                                  {t.reason ? (
-                                    <>
-                                      {" "}
-                                      for{" "}
-                                      <span className="italic font-semibold">
-                                        {t.reason}
-                                      </span>
-                                    </>
-                                  ) : null}
-                                </>
-                              )}
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </div>
