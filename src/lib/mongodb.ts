@@ -1,7 +1,20 @@
 import { MongoClient, Db } from "mongodb";
 
+// Ensure MONGODB_URI is available. For script usage (tsx), Next.js env loading
+// may not have occurred yet. Try loading from .env/.env.local as a fallback.
 if (!process.env.MONGODB_URI) {
-  throw new Error("Please add your MongoDB URI to .env.local");
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    require("dotenv").config();
+  } catch {
+    // ignore optional dotenv failure in environments that don't have it
+  }
+}
+
+if (!process.env.MONGODB_URI) {
+  throw new Error(
+    "Please add your MongoDB URI to .env or .env.local (MONGODB_URI)"
+  );
 }
 
 const uri = process.env.MONGODB_URI as string;

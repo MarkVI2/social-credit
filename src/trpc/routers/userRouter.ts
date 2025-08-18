@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { publicProcedure, protectedProcedure, createTRPCRouter } from '../init';
-import { getDatabase } from '@/lib/mongodb';
-import type { User } from '@/types/user';
+import { z } from "zod";
+import { publicProcedure, protectedProcedure, createTRPCRouter } from "../init";
+import { getDatabase } from "@/lib/mongodb";
+import type { User } from "@/types/user";
 
 export const userRouter = createTRPCRouter({
   // Get all users (public endpoint for searching recipients)
@@ -9,17 +9,27 @@ export const userRouter = createTRPCRouter({
     try {
       const db = await getDatabase();
       const users = await db
-        .collection<User>('userinformation')
+        .collection<User>("userinformation")
         .find(
           {},
-          { projection: { _id: 1, username: 1, email: 1, credits: 1, role: 1 } }
+          {
+            projection: {
+              _id: 1,
+              username: 1,
+              email: 1,
+              credits: 1,
+              role: 1,
+              rank: 1,
+              earnedLifetime: 1,
+            },
+          }
         )
         .toArray();
 
       return { success: true, users };
     } catch (error) {
-      console.error('Error fetching users:', error);
-      throw new Error('Error fetching users');
+      console.error("Error fetching users:", error);
+      throw new Error("Error fetching users");
     }
   }),
 
@@ -33,6 +43,8 @@ export const userRouter = createTRPCRouter({
         email: ctx.user.email,
         credits: ctx.user.credits || 0,
         role: ctx.user.role,
+        rank: (ctx.user as any).rank,
+        earnedLifetime: (ctx.user as any).earnedLifetime,
         createdAt: ctx.user.createdAt,
       },
     };
@@ -42,29 +54,29 @@ export const userRouter = createTRPCRouter({
   getById: publicProcedure
     .input(
       z.object({
-        id: z.string().min(1, 'User ID is required'),
+        id: z.string().min(1, "User ID is required"),
       })
     )
     .query(async ({ input }) => {
       try {
         const db = await getDatabase();
-        const coll = db.collection<User>('userinformation');
-        
+        const coll = db.collection<User>("userinformation");
+
         let user: User | null = null;
-        
+
         // Check if it's a valid ObjectId
         const isValidObjectId = /^[a-fA-F0-9]{24}$/.test(input.id);
         if (isValidObjectId) {
-          const { ObjectId } = await import('mongodb');
+          const { ObjectId } = await import("mongodb");
           user = await coll.findOne({ _id: new ObjectId(input.id) });
-        } else if (input.id.includes('@')) {
+        } else if (input.id.includes("@")) {
           user = await coll.findOne({ email: input.id.toLowerCase() });
         } else {
           user = await coll.findOne({ username: input.id });
         }
 
         if (!user) {
-          throw new Error('User not found');
+          throw new Error("User not found");
         }
 
         return {
@@ -75,12 +87,14 @@ export const userRouter = createTRPCRouter({
             email: user.email,
             credits: user.credits || 0,
             role: user.role,
+            rank: user.rank,
+            earnedLifetime: user.earnedLifetime,
             createdAt: user.createdAt,
           },
         };
       } catch (error) {
-        console.error('Error fetching user:', error);
-        throw new Error('Error fetching user');
+        console.error("Error fetching user:", error);
+        throw new Error("Error fetching user");
       }
     }),
 
@@ -95,32 +109,32 @@ export const userRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       try {
         const db = await getDatabase();
-        const coll = db.collection<User>('userinformation');
-        
+        const coll = db.collection<User>("userinformation");
+
         const updateFields: Partial<User> & { updatedAt: Date } = {
           updatedAt: new Date(),
         };
-        
+
         if (input.username) {
           // Check if username is already taken
-          const existingUser = await coll.findOne({ 
+          const existingUser = await coll.findOne({
             username: input.username,
-            _id: { $ne: ctx.user._id }
+            _id: { $ne: ctx.user._id },
           });
           if (existingUser) {
-            throw new Error('Username already taken');
+            throw new Error("Username already taken");
           }
           updateFields.username = input.username;
         }
-        
+
         if (input.email) {
           // Check if email is already taken
-          const existingUser = await coll.findOne({ 
+          const existingUser = await coll.findOne({
             email: input.email.toLowerCase(),
-            _id: { $ne: ctx.user._id }
+            _id: { $ne: ctx.user._id },
           });
           if (existingUser) {
-            throw new Error('Email already taken');
+            throw new Error("Email already taken");
           }
           updateFields.email = input.email.toLowerCase();
           updateFields.emailVerified = false; // Require re-verification
@@ -132,13 +146,15 @@ export const userRouter = createTRPCRouter({
         );
 
         if (result.matchedCount === 0) {
-          throw new Error('User not found');
+          throw new Error("User not found");
         }
 
-        return { success: true, message: 'Profile updated successfully' };
+        return { success: true, message: "Profile updated successfully" };
       } catch (error) {
-        console.error('Error updating user profile:', error);
-        throw new Error(error instanceof Error ? error.message : 'Error updating profile');
+        console.error("Error updating user profile:", error);
+        throw new Error(
+          error instanceof Error ? error.message : "Error updating profile"
+        );
       }
     }),
 });

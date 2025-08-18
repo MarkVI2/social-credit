@@ -1,8 +1,9 @@
 import dotenv from "dotenv";
-// Load .env.local first (Next.js convention), then fallback to .env
+// Load env before importing any project modules
 dotenv.config({ path: ".env.local" });
 dotenv.config();
-import { getDatabase } from "@/lib/mongodb";
+// Use relative import to avoid Next.js path alias resolution issues under tsx
+import { getDatabase } from "../src/lib/mongodb";
 import { ObjectId } from "mongodb";
 
 async function main() {

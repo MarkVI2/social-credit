@@ -11,7 +11,8 @@
     "init-db": "tsx scripts/init-db.ts",
     "reset-credits": "tsx scripts/reset-credits.ts",
     "test-mail": "tsx scripts/test-mail.ts",
-    "seed-marketplace": "tsx scripts/seed-marketplace.ts"
+    "seed-marketplace": "tsx scripts/seed-marketplace.ts",
+    "backfill-ranks": "tsx scripts/backfill-ranks.ts"
   },
   "dependencies": {
     "@tabler/icons-react": "^3.34.1",

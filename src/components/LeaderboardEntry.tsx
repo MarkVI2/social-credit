@@ -11,6 +11,7 @@ export interface LeaderboardEntryData {
   handle?: string;
   kollaborationKredits: number;
   avatarUrl?: string;
+  rank?: string;
 }
 
 export function LeaderboardEntry({
@@ -64,6 +65,11 @@ export function LeaderboardEntry({
           <div className="text-[10px] sm:text-xs opacity-80 font-mono break-all">
             @{user.handle || "unknown"}
           </div>
+          {user.rank && (
+            <div className="text-[10px] sm:text-xs opacity-90 font-mono">
+              {user.rank}
+            </div>
+          )}
         </div>
       </div>
       <div
