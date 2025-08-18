@@ -33,7 +33,6 @@ export const leaderboardRouter = createTRPCRouter({
           $addFields: { creditsSafe: { $ifNull: ["$credits", 0] } },
         },
         { $sort: { creditsSafe: -1 } },
-        { $limit: 5 },
         {
           $project: {
             _id: 1,
@@ -75,7 +74,6 @@ export const leaderboardRouter = createTRPCRouter({
                 $addFields: { creditsSafe: { $ifNull: ["$credits", 0] } },
               },
               { $sort: { creditsSafe: -1 } },
-              { $limit: 5 },
               {
                 $project: {
                   _id: 1,

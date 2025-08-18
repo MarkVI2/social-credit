@@ -29,10 +29,11 @@ export function LeaderboardEntry({
   /** When true: apply a fixed width to the credits badge for consistent right alignment */
   fixedBadgeWidth?: boolean;
 }) {
-  const displayName = useMemo(
-    () => toSatiricalName(user.name || user.handle || "Unknown"),
-    [user.name, user.handle]
-  );
+  const displayName = useMemo(() => {
+    const base = (user.name || user.handle || "Unknown").trim();
+    const rankPrefix = (user.rank || "").trim();
+    return rankPrefix ? `${rankPrefix} ${base}` : base;
+  }, [user.name, user.handle, user.rank]);
 
   const containerFlex = alwaysRow
     ? "flex-row items-center"
@@ -65,19 +66,17 @@ export function LeaderboardEntry({
           <div className="text-[10px] sm:text-xs opacity-80 font-mono break-all">
             @{user.handle || "unknown"}
           </div>
-          {user.rank && (
+          {/*   {user.rank && (
             <div className="text-[10px] sm:text-xs opacity-90 font-mono">
               {user.rank}
             </div>
-          )}
+          )} */}
         </div>
       </div>
       <div
-        className={`font-mono text-sm sm:text-base tabular-nums px-2 py-1 border-2 self-start ${
-          alwaysRow ? "" : "sm:self-center"
-        } ${highlight ? "border-[var(--accent)] text-[var(--accent)]" : ""} ${
-          fixedBadgeWidth ? "w-20 text-center shrink-0" : ""
-        }`}
+        className={`font-mono text-xs sm:text-sm tabular-nums px-2 py-0.5 border-2 self-center ${
+          highlight ? "border-[var(--accent)] text-[var(--accent)]" : ""
+        } ${fixedBadgeWidth ? "w-20 text-center shrink-0" : ""}`}
         style={{
           borderColor: highlight ? undefined : "var(--foreground)",
           background: "var(--background)",
@@ -90,16 +89,12 @@ export function LeaderboardEntry({
   );
 }
 
-function toSatiricalName(name: string) {
-  const trimmed = name.trim();
-  if (/^(Komrade|Comrade)/i.test(trimmed)) return trimmed;
-  return `Komrade ${trimmed}`;
-}
+// No-op; rank prefixing handled inline above
 
 function RankBadge({ rank, isTop }: { rank: number; isTop: boolean }) {
   return (
     <div
-      className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border-2 font-mono font-bold shrink-0"
+      className="w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center border-2 font-mono font-bold shrink-0 text-xs sm:text-sm"
       style={{
         borderColor: isTop ? "var(--accent)" : "var(--foreground)",
         background: isTop ? "var(--accent)" : "var(--background)",

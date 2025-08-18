@@ -76,7 +76,13 @@ function Modal({
 }
 
 // Helper: Card for a single marketplace item (handles purchase mutation)
-function MarketplaceItemCard({ item }: { item: StoreItem }) {
+function MarketplaceItemCard({
+  item,
+  owned,
+}: {
+  item: StoreItem;
+  owned?: boolean;
+}) {
   const utils = trpc.useUtils();
   // Note: marketplace router may not exist yet; guard to avoid runtime errors
   const marketplaceTrpc = (trpc as any).marketplace as
@@ -90,7 +96,7 @@ function MarketplaceItemCard({ item }: { item: StoreItem }) {
     },
   });
 
-  const disabled = !purchase || purchase.isLoading;
+  const disabled = !purchase || purchase.isLoading || owned;
 
   return (
     <div
@@ -114,6 +120,11 @@ function MarketplaceItemCard({ item }: { item: StoreItem }) {
           {item.price} cr
         </span>
       </div>
+      {owned ? (
+        <p className="font-mono text-[10px] sm:text-xs opacity-70">
+          Already unlocked
+        </p>
+      ) : null}
       {item.description ? (
         <p className="font-mono text-xs sm:text-sm opacity-80">
           {item.description}
@@ -129,7 +140,7 @@ function MarketplaceItemCard({ item }: { item: StoreItem }) {
             background: disabled ? "transparent" : "var(--accent)",
             color: disabled ? "var(--foreground)" : "var(--background)",
             borderColor: "var(--foreground)",
-            opacity: disabled ? 0.6 : 1,
+            opacity: disabled ? 0.4 : 1,
           }}
         >
           {purchase?.isLoading ? "Purchasing…" : "Purchase"}
@@ -550,6 +561,9 @@ function AdminAuctionCreator() {
 
 // Helper: People's Store (lists items via tRPC and renders cards)
 function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
+  // Always call this hook first to keep hook order stable across renders
+  const me = trpc.user.getMe.useQuery(undefined, { staleTime: 5000 });
+  const myRank = (me.data?.user as any)?.rank as string | undefined;
   // Router may not exist yet; safe-guard the hook usage
   const marketplaceTrpc = (trpc as any).marketplace as
     | { listItems: { useQuery: Function } }
@@ -647,9 +661,11 @@ function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
       </h2>
       {items && items.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {items.map((it) => (
-            <MarketplaceItemCard key={it.id} item={it} />
-          ))}
+          {items.map((it) => {
+            const owned =
+              !!myRank && / Badge$/.test(it.name) && it.name.startsWith(myRank);
+            return <MarketplaceItemCard key={it.id} item={it} owned={owned} />;
+          })}
         </div>
       ) : (
         <p className="font-mono text-xs sm:text-sm opacity-80">

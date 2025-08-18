@@ -4,6 +4,7 @@ import { getDatabase } from "@/lib/mongodb";
 import { MarketplaceItemSchema } from "@/models/marketplace";
 import { ObjectId } from "mongodb";
 import { protectedProcedure } from "../init";
+import { broadcastLeaderboardUpdate } from "./leaderboardRouter";
 
 export const marketplaceRouter = createTRPCRouter({
   // Admin only: create a marketplace item
@@ -67,6 +68,7 @@ export const marketplaceRouter = createTRPCRouter({
       const db = await getDatabase();
       const items = db.collection("marketplaceItems");
       const users = db.collection("userinformation");
+      const system = db.collection("systemAccounts");
       const inventory = db.collection("userInventory");
 
       let byId: ObjectId | undefined = undefined;
@@ -87,7 +89,7 @@ export const marketplaceRouter = createTRPCRouter({
       if (!me) throw new Error("User not found");
       if ((me.credits || 0) < price) throw new Error("Insufficient credits");
 
-      // Deduct and add to inventory atomically-ish
+      // Deduct and add to inventory atomically-ish; then credit class bank
       await users.updateOne(
         { _id: ctx.user._id },
         { $inc: { credits: -price }, $set: { updatedAt: new Date() } }
@@ -101,6 +103,16 @@ export const marketplaceRouter = createTRPCRouter({
         description: item.description,
         acquiredAt: new Date(),
       });
+      await system.updateOne(
+        { accountType: "classBank" },
+        { $inc: { balance: price }, $set: { lastUpdated: new Date() } },
+        { upsert: true }
+      );
+
+      // Update live leaderboard since user credits changed
+      try {
+        broadcastLeaderboardUpdate();
+      } catch {}
       return { success: true };
     }),
 

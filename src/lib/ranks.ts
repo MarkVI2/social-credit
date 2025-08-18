@@ -7,19 +7,19 @@ export type VanityRank = {
 
 // Ordered ascending by min threshold
 export const RANKS: VanityRank[] = [
-  { min: 0, name: "New Recruit" },
-  { min: 20, name: "Junior Comrade" },
+  { min: 0, name: "Recruit" },
+  { min: 20, name: "Comrade Jr." },
   { min: 40, name: "Comrade" },
-  { min: 70, name: "Senior Comrade" },
-  { min: 100, name: "Brigade Organizer" },
-  { min: 140, name: "Collective Steward" },
-  { min: 180, name: "Red Banner Bearer" },
-  { min: 230, name: "People's Cadre" },
-  { min: 290, name: "Vanguard Planner" },
-  { min: 360, name: "Council Member" },
-  { min: 440, name: "Politburo Advisor" },
-  { min: 540, name: "First Secretary" },
-  { min: 680, name: "Hero of the People" },
+  { min: 70, name: "Comrade Sr." },
+  { min: 100, name: "Brigade Org." },
+  { min: 140, name: "Steward" },
+  { min: 180, name: "Red Banner" },
+  { min: 230, name: "Cadre" },
+  { min: 290, name: "Vanguard" },
+  { min: 360, name: "Council" },
+  { min: 440, name: "Politburo" },
+  { min: 540, name: "First Sec." },
+  { min: 680, name: "People's Hero" },
 ];
 
 export function getVanityRank(
