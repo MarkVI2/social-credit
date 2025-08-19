@@ -215,6 +215,11 @@ export default function DashboardPage() {
                           Visit People’s Marketplace
                         </button>
                       </div>
+                      {/* User balance display */}
+                      <p className="font-mono text-sm mt-2">
+                        Current Balance:{" "}
+                        <span className="font-bold">{balance} credits</span>
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start">
