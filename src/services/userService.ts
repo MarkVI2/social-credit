@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { getDatabase } from "@/lib/mongodb";
 import { User, UserInput } from "@/types/user";
+import { getVanityRank } from "@/lib/ranks";
 import crypto from "crypto";
 import { sendVerificationEmail } from "./mailService";
 
@@ -55,6 +56,8 @@ export class UserService {
         email: userData.email.toLowerCase(),
         password: hashedPassword,
         credits: 20,
+        earnedLifetime: 20,
+        rank: getVanityRank(20),
         role: "user",
         emailVerified: false,
         verificationToken: token,
@@ -144,6 +147,29 @@ export class UserService {
           { $set: { credits: 20, updatedAt: new Date() } }
         );
         (userWithoutPassword as { credits?: number }).credits = 20;
+      }
+
+      // Backfill earnedLifetime and rank for legacy users
+      const needsLifetime =
+        typeof (userWithoutPassword as { earnedLifetime?: number })
+          .earnedLifetime !== "number";
+      const needsRank =
+        typeof (userWithoutPassword as { rank?: string }).rank !== "string";
+      if (needsLifetime || needsRank) {
+        const earnedLifetime = needsLifetime
+          ? (userWithoutPassword as { credits?: number }).credits ?? 20
+          : (userWithoutPassword as { earnedLifetime?: number })
+              .earnedLifetime!;
+        const rank = getVanityRank(earnedLifetime);
+        await (
+          await this.getCollection()
+        ).updateOne(
+          { _id: user._id },
+          { $set: { earnedLifetime, rank, updatedAt: new Date() } }
+        );
+        (userWithoutPassword as { earnedLifetime?: number }).earnedLifetime =
+          earnedLifetime;
+        (userWithoutPassword as { rank?: string }).rank = rank;
       }
 
       if (!(userWithoutPassword as { role?: string }).role) {

@@ -6,6 +6,8 @@ export interface User {
   email: string;
   password: string; // This will be the hashed password
   credits: number; // Current balance of credits
+  earnedLifetime?: number; // Total credits earned since start (increments when user receives credits)
+  rank?: string; // Vanity rank derived from earnedLifetime
   createdAt: Date;
   updatedAt: Date;
   emailVerified?: boolean;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { trpc } from "@/trpc/client";
 
 interface Props {
   user: { username: string; email: string } | null;
@@ -8,9 +9,12 @@ interface Props {
 }
 
 export default function SettingsModal({ user, onClose }: Props) {
+  const [activeTab, setActiveTab] = useState<"settings" | "possessions">(
+    "settings"
+  );
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") return "light";
-    // Prefer cookie to keep SSR and CSR in sync
+    // 1) Cookie overrides
     const cookieMatch = document.cookie
       .split("; ")
       .find((row) => row.startsWith("theme="));
@@ -19,12 +23,11 @@ export default function SettingsModal({ user, onClose }: Props) {
       | "dark"
       | undefined;
     if (cookieTheme === "dark" || cookieTheme === "light") return cookieTheme;
+    // 2) Local storage fallback
     const ls = (localStorage.getItem("theme") as "light" | "dark") || null;
-    if (ls) return ls;
-    const prefersDark =
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
-    return prefersDark ? "dark" : "light";
+    if (ls === "dark" || ls === "light") return ls;
+    // 3) Default to light; do not auto-switch based on system preference
+    return "light";
   });
 
   useEffect(() => {
@@ -100,64 +103,157 @@ export default function SettingsModal({ user, onClose }: Props) {
           </button>
         </div>
 
-        <div className="mt-6 space-y-4">
-          <div
-            className="border-4 p-4"
+        {/* Tabs */}
+        <div
+          className="mt-4 flex items-center gap-4 border-b-4 pb-2"
+          style={{ borderColor: "var(--foreground)" }}
+        >
+          <button
+            onClick={() => setActiveTab("settings")}
+            className="font-heading uppercase tracking-wider text-sm pb-1 border-b-4"
             style={{
-              borderColor: "var(--foreground)",
-              background: "color-mix(in oklab, var(--background) 70%, white)",
+              color: "var(--foreground)",
+              borderColor:
+                activeTab === "settings" ? "var(--accent)" : "transparent",
             }}
+            aria-current={activeTab === "settings"}
           >
-            <h3
-              className="font-heading text-sm uppercase tracking-wider font-bold"
-              style={{ color: "var(--accent)" }}
-            >
-              Profile
-            </h3>
-            <ChangePasswordForm email={user?.email || ""} />
-          </div>
+            Settings
+          </button>
+          <button
+            onClick={() => setActiveTab("possessions")}
+            className="font-heading uppercase tracking-wider text-sm pb-1 border-b-4"
+            style={{
+              color: "var(--foreground)",
+              borderColor:
+                activeTab === "possessions" ? "var(--accent)" : "transparent",
+            }}
+            aria-current={activeTab === "possessions"}
+          >
+            Possessions
+          </button>
+        </div>
 
-          <div
-            className="border-4 p-4"
-            style={{
-              borderColor: "var(--foreground)",
-              background: "color-mix(in oklab, var(--background) 70%, white)",
-            }}
-          >
-            <h3
-              className="font-heading text-sm uppercase tracking-wider font-bold"
-              style={{ color: "var(--accent)" }}
+        {/* Tab content */}
+        {activeTab === "settings" ? (
+          <div className="mt-4 space-y-4">
+            <div
+              className="border-4 p-4"
+              style={{
+                borderColor: "var(--foreground)",
+                background: "color-mix(in oklab, var(--background) 70%, white)",
+              }}
             >
-              Theme
-            </h3>
-            <div className="mt-2 flex items-center gap-3">
-              <button
-                onClick={() => setTheme("light")}
-                aria-pressed={theme === "light"}
-                className={`px-3 py-2 border-4 rounded-none font-bold btn-3d ${
-                  theme === "light"
-                    ? "bg-[var(--background)] text-[var(--foreground)] border-[var(--border)]"
-                    : "bg-white text-[var(--foreground)] border-[var(--border)]"
-                }`}
+              <h3
+                className="font-heading text-sm uppercase tracking-wider font-bold"
+                style={{ color: "var(--accent)" }}
               >
-                Light
-              </button>
-              <button
-                onClick={() => setTheme("dark")}
-                aria-pressed={theme === "dark"}
-                className={`px-3 py-2 border-4 rounded-none font-bold btn-3d ${
-                  theme === "dark"
-                    ? "bg-[var(--background)] text-[var(--foreground)] border-[var(--border)]"
-                    : "bg-[#1d1d1d] text-[var(--foreground)] border-[var(--border)]"
-                }`}
+                Profile
+              </h3>
+              <ChangePasswordForm email={user?.email || ""} />
+            </div>
+
+            <div
+              className="border-4 p-4"
+              style={{
+                borderColor: "var(--foreground)",
+                background: "color-mix(in oklab, var(--background) 70%, white)",
+              }}
+            >
+              <h3
+                className="font-heading text-sm uppercase tracking-wider font-bold"
+                style={{ color: "var(--accent)" }}
               >
-                Dark
-              </button>
+                Theme
+              </h3>
+              <div className="mt-2 flex items-center gap-3">
+                <button
+                  onClick={() => setTheme("light")}
+                  aria-pressed={theme === "light"}
+                  className={`px-3 py-2 border-4 rounded-none font-bold btn-3d ${
+                    theme === "light"
+                      ? "bg-[var(--background)] text-[var(--foreground)] border-[var(--border)]"
+                      : "bg-white text-[var(--foreground)] border-[var(--border)]"
+                  }`}
+                >
+                  Light
+                </button>
+                <button
+                  onClick={() => setTheme("dark")}
+                  aria-pressed={theme === "dark"}
+                  className={`px-3 py-2 border-4 rounded-none font-bold btn-3d ${
+                    theme === "dark"
+                      ? "bg-[var(--background)] text-[var(--foreground)] border-[var(--border)]"
+                      : "bg-[#1d1d1d] text-[var(--foreground)] border-[var(--border)]"
+                  }`}
+                >
+                  Dark
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="mt-4">
+            <PossessionsList />
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function PossessionsList() {
+  const inv = trpc.marketplace.getMyInventory.useQuery(undefined, {
+    staleTime: 5_000,
+  });
+  if (inv.isLoading) {
+    return (
+      <p className="font-mono text-xs opacity-80">Surveying the armory…</p>
+    );
+  }
+  if (inv.error) {
+    return (
+      <p className="font-mono text-xs opacity-80">
+        Unable to retrieve possessions. The Committee frowns upon this.
+      </p>
+    );
+  }
+  const items = inv.data || [];
+  if (items.length === 0) {
+    return (
+      <p className="font-mono text-xs opacity-80">
+        No possessions recorded. Visit the People's Marketplace to acquire
+        sanctioned goods.
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {items.map((it: any) => (
+        <li
+          key={it.id}
+          className="p-2 border-4 rounded-none"
+          style={{ borderColor: "var(--foreground)" }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div
+                className="font-heading uppercase tracking-wider"
+                style={{ color: "var(--accent)" }}
+              >
+                {it.name}
+              </div>
+              <div className="font-mono text-xs opacity-80">
+                {it.description}
+              </div>
+            </div>
+            <div className="font-mono text-xs opacity-80">
+              {new Date(it.acquiredAt).toLocaleString()}
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
