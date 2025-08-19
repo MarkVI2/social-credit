@@ -110,7 +110,7 @@ export const creditsRouter = createTRPCRouter({
             }
           } else {
             // classBank source
-            const classBankQuery: { _id: string } = { _id: "classBank" };
+            const classBankQuery = { _id: "classBank" };
             if (amount > 0) {
               // deduct from class bank, credit to user
               const dec = await system.updateOne(
