@@ -30,8 +30,10 @@
     "nodemailer": "^7.0.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "recharts": "^2.12.7",
     "server-only": "^0.0.1",
     "superjson": "^2.2.2",
+    "vis-network": "^9.1.9",
     "zod": "^4.0.17"
   },
   "devDependencies": {
