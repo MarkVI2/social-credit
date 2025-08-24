@@ -211,16 +211,15 @@ export const statsRouter = createTRPCRouter({
       const classBank = await db
         .collection("systemAccounts")
         .findOne({ accountType: "classBank" });
-      const supply =
-        (usersTotal[0]?.total || 0) + (classBank?.balance || 0) || 1;
+      // Total circulating supply at query time; avoid fallback to 1 to not mask true zero-supply windows.
+      // If supply is 0, velocity is undefined (null) for the period.
+      const supply = (usersTotal[0]?.total || 0) + (classBank?.balance || 0);
       const series = volume.map((v: any) => {
         const { year, month, day, hour } = v._id;
         const ts = new Date(year, (month || 1) - 1, day || 1, hour || 0);
-        return {
-          timestamp: ts,
-          velocity: (v.volume || 0) / supply,
-          volume: v.volume,
-        };
+        const vol = v.volume || 0;
+        const vel = supply === 0 ? null : vol / supply;
+        return { timestamp: ts, velocity: vel, volume: vol };
       });
       return { series, supply };
     }),

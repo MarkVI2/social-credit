@@ -67,7 +67,8 @@ export default function AdminStatisticsPage() {
     () =>
       (velocity.data?.series || []).map((p) => ({
         ts: new Date(p.timestamp).toLocaleDateString(),
-        velocity: Number(p.velocity?.toFixed?.(3) || 0),
+        velocity:
+          p.velocity == null ? null : Number(p.velocity?.toFixed?.(3) || 0),
         volume: p.volume,
       })),
     [velocity.data]
@@ -162,7 +163,7 @@ export default function AdminStatisticsPage() {
                     <Tooltip />
                     <Line
                       type="monotone"
-                      dataKey="velocity"
+                      dataKey={(d: any) => d.velocity}
                       stroke="#ef4444"
                       dot={false}
                       name="Velocity"
