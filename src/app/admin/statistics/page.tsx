@@ -12,18 +12,47 @@ import {
   BarChart,
   Bar,
 } from "recharts";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { NetworkGraph } from "@/components/NetworkGraph";
 
 export default function AdminStatisticsPage() {
+  // Charts without temporal controls
   const supply = trpc.admin.stats.totalSupplyOverTime.useQuery({
     granularity: "day",
   });
   const velocity = trpc.admin.stats.velocity.useQuery({ granularity: "day" });
   const sinksSources = trpc.admin.stats.sinksSources.useQuery({});
   const topTraders = trpc.admin.stats.topTraders.useQuery({});
-  const peerGraph = trpc.admin.stats.peerGraph.useQuery({});
-  const knowledge = trpc.admin.stats.knowledgeGraph.useQuery({});
+
+  // Knowledge/Peer graphs temporal controls: N days from the very first transaction
+  const bounds = trpc.admin.stats.timeBounds.useQuery();
+  const earliest = bounds.data?.earliest
+    ? new Date(bounds.data.earliest)
+    : undefined;
+  const latest = bounds.data?.latest ? new Date(bounds.data.latest) : undefined;
+  const totalDays = useMemo(() => {
+    if (!earliest || !latest) return 365;
+    const diff =
+      Math.ceil(
+        (latest.getTime() - earliest.getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1;
+    return Math.max(1, diff);
+  }, [earliest, latest]);
+  const [daysFromStart, setDaysFromStart] = useState<number>(30);
+  const windowToDate = useMemo(() => {
+    if (!earliest) return undefined;
+    const d = new Date(earliest);
+    d.setDate(d.getDate() + Math.min(daysFromStart - 1, totalDays - 1));
+    return d;
+  }, [earliest, daysFromStart, totalDays]);
+  const peerGraph = trpc.admin.stats.peerGraph.useQuery({
+    from: earliest,
+    to: windowToDate,
+  });
+  const knowledge = trpc.admin.stats.knowledgeGraph.useQuery({
+    from: earliest,
+    to: windowToDate,
+  });
 
   const supplySeries = useMemo(
     () =>
@@ -207,8 +236,7 @@ export default function AdminStatisticsPage() {
                 </table>
               </div>
               <div className="mt-4 text-xs opacity-80">
-                Peer graph and knowledge graph visualizations are available via
-                the API. For richer visuals, integrate vis-network or d3.
+                Top traders by total volume.
               </div>
             </section>
 
@@ -226,6 +254,30 @@ export default function AdminStatisticsPage() {
               >
                 Knowledge Graphs
               </h2>
+              <div className="mb-3">
+                <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
+                  Time Window (Days from Start)
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={1}
+                    max={totalDays}
+                    value={Math.min(daysFromStart, totalDays)}
+                    onChange={(e) => setDaysFromStart(Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="font-mono text-xs whitespace-nowrap">
+                    First {Math.min(daysFromStart, totalDays)} day
+                    {Math.min(daysFromStart, totalDays) === 1 ? "" : "s"}
+                  </div>
+                </div>
+                <div className="mt-1 text-[10px] opacity-70 font-mono">
+                  {earliest && windowToDate
+                    ? `${earliest.toLocaleDateString()} → ${windowToDate.toLocaleDateString()}`
+                    : "Loading bounds…"}
+                </div>
+              </div>
               <div className="grid grid-cols-1 gap-4">
                 <NetworkGraph
                   title="Peer Trading Graph"

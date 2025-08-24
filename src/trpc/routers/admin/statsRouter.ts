@@ -20,6 +20,25 @@ function timeBucket(stage: "day" | "hour") {
 }
 
 export const statsRouter = createTRPCRouter({
+  // Provide earliest and latest transaction timestamps
+  timeBounds: adminProcedure.query(async () => {
+    const db = await getDatabase();
+    const tx = db.collection("transactionHistory");
+    const minDoc = await tx
+      .find({}, { projection: { timestamp: 1 } })
+      .sort({ timestamp: 1 })
+      .limit(1)
+      .toArray();
+    const maxDoc = await tx
+      .find({}, { projection: { timestamp: 1 } })
+      .sort({ timestamp: -1 })
+      .limit(1)
+      .toArray();
+    return {
+      earliest: minDoc[0]?.timestamp || null,
+      latest: maxDoc[0]?.timestamp || null,
+    };
+  }),
   // Total supply over time using transaction deltas with special case for classBank and explicit mint/burn
   totalSupplyOverTime: adminProcedure
     .input(
@@ -303,13 +322,21 @@ export const statsRouter = createTRPCRouter({
       z.object({
         minVolume: z.number().min(0).default(0),
         limit: z.number().min(1).max(1000).default(500),
+        from: z.date().optional(),
+        to: z.date().optional(),
       })
     )
     .query(async ({ input }) => {
       const db = await getDatabase();
       const tx = db.collection("transactionHistory");
+      const match: any = {};
+      if (input.from)
+        match.timestamp = { ...(match.timestamp || {}), $gte: input.from };
+      if (input.to)
+        match.timestamp = { ...(match.timestamp || {}), $lte: input.to };
       const edges = await tx
         .aggregate([
+          { $match: match },
           {
             $group: {
               _id: { from: "$from", to: "$to" },
@@ -339,12 +366,24 @@ export const statsRouter = createTRPCRouter({
 
   // Knowledge graph derived from transactions (degree centrality proxy)
   knowledgeGraph: adminProcedure
-    .input(z.object({ limit: z.number().min(1).max(1000).default(500) }))
+    .input(
+      z.object({
+        limit: z.number().min(1).max(1000).default(500),
+        from: z.date().optional(),
+        to: z.date().optional(),
+      })
+    )
     .query(async ({ input }) => {
       const db = await getDatabase();
       const tx = db.collection("transactionHistory");
+      const match: any = {};
+      if (input.from)
+        match.timestamp = { ...(match.timestamp || {}), $gte: input.from };
+      if (input.to)
+        match.timestamp = { ...(match.timestamp || {}), $lte: input.to };
       const edges = await tx
         .aggregate([
+          { $match: match },
           {
             $group: { _id: { from: "$from", to: "$to" }, weight: { $sum: 1 } },
           },
