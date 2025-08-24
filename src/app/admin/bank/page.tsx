@@ -1,94 +1,84 @@
 "use client";
 import BackHomeButton from "@/components/BackHomeButton";
-import { useMemo, useState } from "react";
+import { trpc } from "@/trpc/client";
+import { useState } from "react";
 
-type AuctionType = "forward" | "reverse";
-type LogEntry = {
-  timestamp: string;
-  user: string;
-  action: string;
-  amount: number;
-  memo: string;
-};
+const sharedInputClass =
+  "w-full px-2 py-1 border-2 rounded-none font-mono text-xs sm:text-sm";
 
 export default function AdminBankPage() {
-  // Create Money form state
-  const [mintUserId, setMintUserId] = useState<string>("");
-  const [mintAmount, setMintAmount] = useState<string>("");
-  const [mintReason, setMintReason] = useState<string>("");
+  // Mint form
+  const [targetUserId, setTargetUserId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [toAll, setToAll] = useState(false);
+  const mint = trpc.admin.credits.mintSupply.useMutation();
 
-  // Host Auctions form state
-  const [itemName, setItemName] = useState<string>("");
-  const [startingPrice, setStartingPrice] = useState<string>("");
-  const [auctionType, setAuctionType] = useState<AuctionType>("forward");
-
-  // Auditing state
-  const [search, setSearch] = useState<string>("");
-
-  const demoLogs: LogEntry[] = useMemo(
-    () => [
-      {
-        timestamp: "2025-08-10 09:24",
-        user: "usr_1A2B3C",
-        action: "MINT",
-        amount: 250,
-        memo: "Initial class stipend",
-      },
-      {
-        timestamp: "2025-08-11 14:05",
-        user: "usr_9Z8Y7X",
-        action: "TRANSFER",
-        amount: -40,
-        memo: "Marketplace: Notebook",
-      },
-      {
-        timestamp: "2025-08-12 18:42",
-        user: "usr_1A2B3C",
-        action: "BURN",
-        amount: -20,
-        memo: "Fine: Late submission",
-      },
-      {
-        timestamp: "2025-08-13 10:10",
-        user: "usr_5K6L7M",
-        action: "MINT",
-        amount: 100,
-        memo: "Auction reward",
-      },
-    ],
-    []
+  // Auctions
+  const [itemName, setItemName] = useState("");
+  const [startingPrice, setStartingPrice] = useState("");
+  const [startTime, setStartTime] = useState(() =>
+    new Date().toISOString().slice(0, 16)
   );
+  const [endTime, setEndTime] = useState(() =>
+    new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 16)
+  );
+  const [payoutToClassBank, setPayoutToClassBank] = useState(true);
+  const createAuction = trpc.auction.create.useMutation();
+  const settleAuction = trpc.auction.settle.useMutation();
 
-  const filteredLogs = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return demoLogs;
-    return demoLogs.filter((l) =>
-      [l.user, l.memo].some((v) => v.toLowerCase().includes(q))
-    );
-  }, [demoLogs, search]);
+  // Class bank status
+  const classBankStatus = trpc.admin.classbank.getClassBankStatus.useQuery();
 
-  const sharedInputClass =
-    "rounded-none border-2 w-full bg-transparent px-2 py-2 font-mono text-xs sm:text-sm focus:outline-none focus:ring-0";
+  // Transactions auditing filters
+  const [page, setPage] = useState(1);
+  const [q, setQ] = useState("");
+  const [sender, setSender] = useState("");
+  const [receiver, setReceiver] = useState("");
+  const [type, setType] = useState("");
+  const [fromStr, setFromStr] = useState("");
+  const [toStr, setToStr] = useState("");
+  const txQuery = trpc.admin.transactions.list.useQuery({
+    page,
+    pageSize: 25,
+    q: q || undefined,
+    sender: sender || undefined,
+    receiver: receiver || undefined,
+    type: type || undefined,
+    from: fromStr ? new Date(fromStr) : undefined,
+    to: toStr ? new Date(toStr) : undefined,
+  });
 
-  const handleMintSubmit = (e: React.FormEvent) => {
+  async function onMintSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // Placeholder submit: wire this to POST /api/admin/update-credits or similar in future.
-    // Keeping values as strings to allow empty state; parse as needed.
-    console.log("MINT", {
-      userId: mintUserId.trim(),
-      amount: Number(mintAmount || 0),
-      reason: mintReason.trim(),
+    const amt = Number(amount);
+    if (!amt || amt <= 0) return;
+    await mint.mutateAsync({
+      amount: amt,
+      reason,
+      targetUserId: toAll ? undefined : targetUserId || undefined,
+      distributeToAll: toAll,
     });
-  };
+    setAmount("");
+    setReason("");
+    setTargetUserId("");
+    setToAll(false);
+  }
 
-  const handleAuctionSubmit = (e: React.FormEvent) => {
+  async function onCreateAuction(e: React.FormEvent) {
     e.preventDefault();
-    console.log("AUCTION", {
-      itemName: itemName.trim(),
-      startingPrice: Number(startingPrice || 0),
-      auctionType,
-    });
-  };
+    const sp = Number(startingPrice) || undefined;
+    await createAuction.mutateAsync({
+      itemName,
+      auctionType: "english",
+      startTime: new Date(startTime),
+      endTime: new Date(endTime),
+      startingBid: sp,
+      payoutToClassBank,
+    } as any);
+    setItemName("");
+    setStartingPrice("");
+  }
 
   return (
     <div
@@ -96,297 +86,362 @@ export default function AdminBankPage() {
       style={{ background: "var(--background)", color: "var(--foreground)" }}
     >
       <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-4">
-        <div className="flex flex-col gap-3">
-          <div
-            className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card mb-4"
+        <div
+          className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card mb-4"
+          style={{
+            background: "var(--background)",
+            borderColor: "var(--foreground)",
+          }}
+        >
+          <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+            <h1
+              className="font-heading text-xl sm:text-2xl font-extrabold uppercase tracking-wider"
+              style={{ color: "var(--accent)" }}
+            >
+              Bank
+            </h1>
+            <BackHomeButton className="mt-1" />
+          </div>
+          <p className="font-mono text-xs sm:text-sm opacity-80 mt-1">
+            Mint currency, audit transactions, and host class-funded auctions.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Mint credits */}
+          <section
+            className="p-3 sm:p-4 border-4 rounded-none shadow-card-sm"
             style={{
               background: "var(--background)",
               borderColor: "var(--foreground)",
             }}
           >
-            <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
-              <h1
-                className="font-heading text-xl sm:text-2xl font-extrabold uppercase tracking-wider"
-                style={{ color: "var(--accent)" }}
-              >
-                Bank Access
-              </h1>
-              <BackHomeButton className="mt-1" />
-            </div>
-            <p className="font-mono text-xs sm:text-sm opacity-80 mt-1">
-              Create money, host auctions, and audit monetary flows.
-            </p>
-          </div>
-
-          {/* Responsive flex layout: stack on mobile, 3-up row on large screens */}
-          <div className="flex flex-col lg:flex-row flex-wrap gap-4">
-            {/* Create Money */}
-            <section
-              className="p-3 sm:p-4 border-4 rounded-none shadow-card-sm flex flex-col flex-1 min-w-0 lg:basis-[calc(33%-1rem)]"
-              style={{
-                background: "var(--background)",
-                borderColor: "var(--foreground)",
-              }}
+            <h2
+              className="font-heading font-bold uppercase tracking-wider mb-2"
+              style={{ color: "var(--accent)" }}
             >
-              <h2
-                className="font-heading font-bold uppercase tracking-wider mb-2"
-                style={{ color: "var(--accent)" }}
-              >
-                Create Money
-              </h2>
-              <form onSubmit={handleMintSubmit} className="flex flex-col gap-3">
-                <div>
-                  <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
-                    TARGET USER
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="User ID"
-                    className={sharedInputClass}
-                    style={{ borderColor: "var(--foreground)" }}
-                    value={mintUserId}
-                    onChange={(e) => setMintUserId(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
-                    AMOUNT
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="0"
-                    className={sharedInputClass}
-                    style={{ borderColor: "var(--foreground)" }}
-                    value={mintAmount}
-                    onChange={(e) => setMintAmount(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
-                    REASON
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Reason / Memo"
-                    className={sharedInputClass}
-                    style={{ borderColor: "var(--foreground)" }}
-                    value={mintReason}
-                    onChange={(e) => setMintReason(e.target.value)}
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="rounded-none border-2 px-3 py-2 font-heading text-xs sm:text-sm font-bold uppercase tracking-wider hover:opacity-90 active:opacity-100"
-                    style={{
-                      background: "var(--accent)",
-                      color: "var(--background)",
-                      borderColor: "var(--foreground)",
-                    }}
-                  >
-                    MINT CREDITS
-                  </button>
-                </div>
-              </form>
-            </section>
-
-            {/* Host Auctions */}
-            <section
-              className="p-3 sm:p-4 border-4 rounded-none shadow-card-sm flex flex-col flex-1 min-w-0 lg:basis-[calc(33%-1rem)]"
-              style={{
-                background: "var(--background)",
-                borderColor: "var(--foreground)",
-              }}
-            >
-              <h2
-                className="font-heading font-bold uppercase tracking-wider mb-2"
-                style={{ color: "var(--accent)" }}
-              >
-                Host Auctions
-              </h2>
-              <form
-                onSubmit={handleAuctionSubmit}
-                className="flex flex-col gap-3"
-              >
-                <div>
-                  <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
-                    Item Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Item name"
-                    className={sharedInputClass}
-                    style={{ borderColor: "var(--foreground)" }}
-                    value={itemName}
-                    onChange={(e) => setItemName(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
-                    Starting Price
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="0"
-                    className={sharedInputClass}
-                    style={{ borderColor: "var(--foreground)" }}
-                    value={startingPrice}
-                    onChange={(e) => setStartingPrice(e.target.value)}
-                  />
-                </div>
-                <fieldset
-                  className="rounded-none border-2 p-2"
-                  style={{ borderColor: "var(--foreground)" }}
-                >
-                  <legend className="px-1 font-heading text-[10px] sm:text-xs uppercase tracking-widest">
-                    Auction Type
-                  </legend>
-                  <div className="flex items-center gap-4">
-                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="radio"
-                        name="auctionType"
-                        value="forward"
-                        checked={auctionType === "forward"}
-                        onChange={() => setAuctionType("forward")}
-                        className="accent-current"
-                      />
-                      <span className="font-mono text-xs sm:text-sm">
-                        Forward
-                      </span>
-                    </label>
-                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="radio"
-                        name="auctionType"
-                        value="reverse"
-                        checked={auctionType === "reverse"}
-                        onChange={() => setAuctionType("reverse")}
-                        className="accent-current"
-                      />
-                      <span className="font-mono text-xs sm:text-sm">
-                        Reverse
-                      </span>
-                    </label>
-                  </div>
-                </fieldset>
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="rounded-none border-2 px-3 py-2 font-heading text-xs sm:text-sm font-bold uppercase tracking-wider hover:opacity-90"
-                    style={{
-                      background: "var(--accent)",
-                      color: "var(--background)",
-                      borderColor: "var(--foreground)",
-                    }}
-                  >
-                    CREATE AUCTION
-                  </button>
-                </div>
-              </form>
-            </section>
-
-            {/* Monetary Auditing */}
-            <section
-              className="p-3 sm:p-4 border-4 rounded-none shadow-card-sm flex flex-col flex-1 min-w-0 lg:basis-[calc(33%-1rem)]"
-              style={{
-                background: "var(--background)",
-                borderColor: "var(--foreground)",
-              }}
-            >
-              <h2
-                className="font-heading font-bold uppercase tracking-wider mb-2"
-                style={{ color: "var(--accent)" }}
-              >
-                Monetary Auditing
-              </h2>
-              <div className="mb-3">
+              Mint Credits
+            </h2>
+            <form onSubmit={onMintSubmit} className="flex flex-col gap-3">
+              <div>
+                <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
+                  User ID (optional)
+                </label>
                 <input
-                  type="text"
-                  placeholder="Search by User ID or Memo..."
+                  value={targetUserId}
+                  onChange={(e) => setTargetUserId(e.target.value)}
+                  placeholder="Mongo _id"
                   className={sharedInputClass}
                   style={{ borderColor: "var(--foreground)" }}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <div className="overflow-x-auto">
-                <table
-                  className="min-w-full table-fixed border-2 text-left"
+              <div>
+                <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
+                  Amount
+                </label>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className={sharedInputClass}
                   style={{ borderColor: "var(--foreground)" }}
-                >
-                  <thead>
-                    <tr>
-                      {["Timestamp", "User", "Action", "Amount", "Memo"].map(
-                        (h) => (
-                          <th
-                            key={h}
-                            className="px-2 py-2 font-heading text-[10px] sm:text-xs uppercase tracking-widest border-2"
-                            style={{
-                              borderColor: "var(--foreground)",
-                              background: "var(--background)",
-                              color: "var(--accent)",
-                            }}
-                          >
-                            {h}
-                          </th>
-                        )
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredLogs.map((row, idx) => (
-                      <tr key={idx} className="align-top">
-                        <td
-                          className="px-2 py-2 border-2 font-mono text-xs sm:text-sm"
-                          style={{ borderColor: "var(--foreground)" }}
-                        >
-                          {row.timestamp}
-                        </td>
-                        <td
-                          className="px-2 py-2 border-2 font-mono text-xs sm:text-sm"
-                          style={{ borderColor: "var(--foreground)" }}
-                        >
-                          {row.user}
-                        </td>
-                        <td
-                          className="px-2 py-2 border-2 font-mono text-xs sm:text-sm"
-                          style={{ borderColor: "var(--foreground)" }}
-                        >
-                          {row.action}
-                        </td>
-                        <td
-                          className="px-2 py-2 border-2 font-mono text-xs sm:text-sm"
-                          style={{ borderColor: "var(--foreground)" }}
-                        >
-                          {row.amount}
-                        </td>
-                        <td
-                          className="px-2 py-2 border-2 font-mono text-xs sm:text-sm"
-                          style={{ borderColor: "var(--foreground)" }}
-                        >
-                          {row.memo}
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredLogs.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="px-2 py-4 border-2 font-mono text-xs sm:text-sm text-center opacity-70"
-                          style={{ borderColor: "var(--foreground)" }}
-                        >
-                          No results.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                />
               </div>
-            </section>
-          </div>
+              <div>
+                <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
+                  Reason
+                </label>
+                <input
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  className={sharedInputClass}
+                  style={{ borderColor: "var(--foreground)" }}
+                />
+              </div>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={toAll}
+                  onChange={(e) => setToAll(e.target.checked)}
+                  className="accent-current"
+                />
+                <span className="font-mono text-xs sm:text-sm">
+                  Distribute to all users
+                </span>
+              </label>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="rounded-none border-2 px-3 py-2 font-heading text-xs sm:text-sm font-bold uppercase tracking-wider hover:opacity-90"
+                  style={{
+                    background: "var(--accent)",
+                    color: "var(--background)",
+                    borderColor: "var(--foreground)",
+                  }}
+                >
+                  Mint
+                </button>
+              </div>
+            </form>
+            <div className="mt-3 font-mono text-xs opacity-80">
+              Class Bank: {classBankStatus.data?.balance ?? 0} cr
+            </div>
+          </section>
+
+          {/* Host auction */}
+          <section
+            className="p-3 sm:p-4 border-4 rounded-none shadow-card-sm"
+            style={{
+              background: "var(--background)",
+              borderColor: "var(--foreground)",
+            }}
+          >
+            <h2
+              className="font-heading font-bold uppercase tracking-wider mb-2"
+              style={{ color: "var(--accent)" }}
+            >
+              Host Auction
+            </h2>
+            <form onSubmit={onCreateAuction} className="flex flex-col gap-3">
+              <div>
+                <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
+                  Item Name
+                </label>
+                <input
+                  value={itemName}
+                  onChange={(e) => setItemName(e.target.value)}
+                  className={sharedInputClass}
+                  style={{ borderColor: "var(--foreground)" }}
+                />
+              </div>
+              <div>
+                <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
+                  Starting Bid
+                </label>
+                <input
+                  type="number"
+                  value={startingPrice}
+                  onChange={(e) => setStartingPrice(e.target.value)}
+                  className={sharedInputClass}
+                  style={{ borderColor: "var(--foreground)" }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
+                    Start
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className={sharedInputClass}
+                    style={{ borderColor: "var(--foreground)" }}
+                  />
+                </div>
+                <div>
+                  <label className="block font-heading text-[10px] sm:text-xs uppercase tracking-widest mb-1">
+                    End
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className={sharedInputClass}
+                    style={{ borderColor: "var(--foreground)" }}
+                  />
+                </div>
+              </div>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={payoutToClassBank}
+                  onChange={(e) => setPayoutToClassBank(e.target.checked)}
+                  className="accent-current"
+                />
+                <span className="font-mono text-xs sm:text-sm">
+                  Payout to Class Bank
+                </span>
+              </label>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="rounded-none border-2 px-3 py-2 font-heading text-xs sm:text-sm font-bold uppercase tracking-wider hover:opacity-90"
+                  style={{
+                    background: "var(--accent)",
+                    color: "var(--background)",
+                    borderColor: "var(--foreground)",
+                  }}
+                >
+                  Create
+                </button>
+              </div>
+            </form>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const id = prompt("Auction ID to settle?") || "";
+                if (!id) return;
+                await settleAuction.mutateAsync({
+                  auctionId: id,
+                  useClassBank: payoutToClassBank,
+                });
+              }}
+              className="mt-3"
+            >
+              <button
+                type="submit"
+                className="rounded-none border-2 px-3 py-2 font-heading text-xs sm:text-sm font-bold uppercase tracking-wider"
+                style={{
+                  background: "var(--accent)",
+                  color: "var(--background)",
+                  borderColor: "var(--foreground)",
+                }}
+              >
+                Settle Auction…
+              </button>
+            </form>
+          </section>
+
+          {/* Auditing */}
+          <section
+            className="p-3 sm:p-4 border-4 rounded-none shadow-card-sm"
+            style={{
+              background: "var(--background)",
+              borderColor: "var(--foreground)",
+            }}
+          >
+            <h2
+              className="font-heading font-bold uppercase tracking-wider mb-2"
+              style={{ color: "var(--accent)" }}
+            >
+              Transactions
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search reason/from/to"
+                className={sharedInputClass}
+                style={{ borderColor: "var(--foreground)" }}
+              />
+              <input
+                value={sender}
+                onChange={(e) => setSender(e.target.value)}
+                placeholder="Sender"
+                className={sharedInputClass}
+                style={{ borderColor: "var(--foreground)" }}
+              />
+              <input
+                value={receiver}
+                onChange={(e) => setReceiver(e.target.value)}
+                placeholder="Receiver"
+                className={sharedInputClass}
+                style={{ borderColor: "var(--foreground)" }}
+              />
+              <input
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                placeholder="Type (e.g., marketplace_purchase)"
+                className={sharedInputClass}
+                style={{ borderColor: "var(--foreground)" }}
+              />
+              <input
+                type="date"
+                value={fromStr}
+                onChange={(e) => setFromStr(e.target.value)}
+                className={sharedInputClass}
+                style={{ borderColor: "var(--foreground)" }}
+              />
+              <input
+                type="date"
+                value={toStr}
+                onChange={(e) => setToStr(e.target.value)}
+                className={sharedInputClass}
+                style={{ borderColor: "var(--foreground)" }}
+              />
+            </div>
+            <div className="mb-2 flex gap-2">
+              <button
+                onClick={() => txQuery.refetch()}
+                className="rounded-none border-2 px-3 py-2 font-heading text-[10px] sm:text-xs font-bold uppercase tracking-wider"
+                style={{
+                  background: "var(--accent)",
+                  color: "var(--background)",
+                  borderColor: "var(--foreground)",
+                }}
+              >
+                Apply
+              </button>
+              <button
+                onClick={() => {
+                  setQ("");
+                  setSender("");
+                  setReceiver("");
+                  setType("");
+                  setFromStr("");
+                  setToStr("");
+                  setPage(1);
+                }}
+                className="rounded-none border-2 px-3 py-2 font-heading text-[10px] sm:text-xs font-bold uppercase tracking-wider"
+                style={{ borderColor: "var(--foreground)" }}
+              >
+                Reset
+              </button>
+            </div>
+            <div className="overflow-auto max-h-80">
+              <table className="w-full text-xs sm:text-sm font-mono">
+                <thead>
+                  <tr
+                    className="text-left border-b-2"
+                    style={{ borderColor: "var(--foreground)" }}
+                  >
+                    <th className="py-1 pr-2">Time</th>
+                    <th className="py-1 pr-2">From</th>
+                    <th className="py-1 pr-2">To</th>
+                    <th className="py-1 pr-2">Amount</th>
+                    <th className="py-1 pr-2">Type</th>
+                    <th className="py-1 pr-2">Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(txQuery.data?.items || []).map((t: any, i: number) => (
+                    <tr
+                      key={i}
+                      className="border-b last:border-b-0"
+                      style={{ borderColor: "var(--foreground)" }}
+                    >
+                      <td className="py-1 pr-2">
+                        {new Date(t.timestamp).toLocaleString()}
+                      </td>
+                      <td className="py-1 pr-2">{t.from}</td>
+                      <td className="py-1 pr-2">{t.to}</td>
+                      <td className="py-1 pr-2">{t.amount}</td>
+                      <td className="py-1 pr-2">{t.type || "peer_transfer"}</td>
+                      <td className="py-1 pr-2">{t.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                className="rounded-none border-2 px-2 py-1 font-heading text-[10px] uppercase"
+                style={{ borderColor: "var(--foreground)" }}
+              >
+                Prev
+              </button>
+              <div className="font-mono text-xs">Page {page}</div>
+              <button
+                onClick={() => setPage(page + 1)}
+                className="rounded-none border-2 px-2 py-1 font-heading text-[10px] uppercase"
+                style={{ borderColor: "var(--foreground)" }}
+              >
+                Next
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </div>

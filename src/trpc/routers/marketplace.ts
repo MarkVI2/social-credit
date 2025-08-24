@@ -111,6 +111,16 @@ export const marketplaceRouter = createTRPCRouter({
 
       // Update live leaderboard since user credits changed
       try {
+        // Log as a marketplace purchase for downstream analytics
+        const from = me.username || me.email || "";
+        await db.collection("transactionHistory").insertOne({
+          from,
+          to: "classBank",
+          amount: price,
+          reason: `Purchase: ${item.name}`,
+          timestamp: new Date(),
+          type: "marketplace_purchase",
+        });
         broadcastLeaderboardUpdate();
       } catch {}
       return { success: true };

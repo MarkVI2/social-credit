@@ -8,6 +8,8 @@ export type TransactionLog = {
   amount: number; // positive for credit to 'to'
   reason: string;
   timestamp: Date;
+  // Optional machine-readable category for analytics: 'peer_transfer' | 'marketplace_purchase' | 'auction_settlement' | 'admin_adjustment' | 'mint_supply' | 'burn_supply' | 'other'
+  type?: string;
   message?: string; // denormalized themed message
 };
 
