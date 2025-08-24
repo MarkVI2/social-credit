@@ -16,6 +16,8 @@ export const AuctionSchema = z.object({
   itemDescription: z.string().optional(),
   itemImage: z.string().url().optional(),
   sellerId: z.instanceof(ObjectId),
+  // If true, settlement will route proceeds to system classBank instead of seller
+  payoutToClassBank: z.boolean().optional(),
   auctionType: z.enum(["english", "dutch"]),
   status: z.enum(["active", "completed", "cancelled"]).default("active"),
   startTime: z.date(),

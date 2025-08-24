@@ -8,6 +8,8 @@ import { classbankRouter } from "./admin/classbankRouter";
 import { creditsRouter } from "./admin/creditsRouter";
 import { auctionRouter } from "./auction";
 import { marketplaceRouter } from "./marketplace";
+import { statsRouter } from "./admin/statsRouter";
+import { transactionsAdminRouter } from "./admin/transactionsAdminRouter";
 
 export const appRouter = createTRPCRouter({
   // Public and user routes
@@ -23,6 +25,8 @@ export const appRouter = createTRPCRouter({
     users: adminUsersRouter,
     classbank: classbankRouter,
     credits: creditsRouter,
+    stats: statsRouter,
+    transactions: transactionsAdminRouter,
   }),
 });
 
