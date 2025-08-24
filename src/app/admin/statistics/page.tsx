@@ -88,6 +88,12 @@ export default function AdminStatisticsPage() {
               >
                 Coin Management
               </h2>
+              <div
+                className="text-xs font-heading uppercase mb-1"
+                style={{ color: "var(--accent)" }}
+              >
+                Total Supply (Δ and Cumulative)
+              </div>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={supplySeries}>
@@ -112,7 +118,13 @@ export default function AdminStatisticsPage() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <div className="h-56 mt-4">
+              <div
+                className="text-xs font-heading uppercase mb-1 mt-4"
+                style={{ color: "var(--accent)" }}
+              >
+                Velocity (Volume / Supply)
+              </div>
+              <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={velocitySeries}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -129,7 +141,13 @@ export default function AdminStatisticsPage() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <div className="h-56 mt-4">
+              <div
+                className="text-xs font-heading uppercase mb-1 mt-4"
+                style={{ color: "var(--accent)" }}
+              >
+                Transactions by Type (Volume)
+              </div>
+              <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={(sinksSources.data?.byType || []).map((r) => ({
