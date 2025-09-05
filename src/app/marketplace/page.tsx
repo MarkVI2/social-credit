@@ -292,7 +292,10 @@ function AdminAuctionCreator() {
     ? adminCreateAuction({
         onSuccess: async () => {
           try {
-            (await (trpc as any).auction?.list) && utils.invalidate();
+            const hasList = Boolean((trpc as any)?.auction?.list);
+            if (hasList) {
+              await utils.invalidate();
+            }
           } catch {}
           alert("The auction is now the will of the people.");
           setItemName("");

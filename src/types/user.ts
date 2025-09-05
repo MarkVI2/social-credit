@@ -19,6 +19,9 @@ export interface User {
   resetTokenExpiresAt?: Date;
   // Role-based access control
   role?: "user" | "admin";
+  // Account status controls
+  isFrozen?: boolean; // when true, user cannot perform transactions/purchases
+  timeoutUntil?: Date; // when in the future, user is on timeout and cannot perform transactions/purchases
   transactionsSent?: number; // Total number of transactions sent by user
   transactionsReceived?: number; // Total number of transactions received by user
   // Token-based session (localStorage/cookie). Store only hash in DB.

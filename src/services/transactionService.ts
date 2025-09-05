@@ -18,7 +18,7 @@ export async function logTransaction(entry: TransactionLog) {
   const users = db.collection("userinformation");
   const inventory = db.collection("userInventory");
 
-  let finalEntry = { ...entry };
+  const finalEntry = { ...entry };
 
   // Check if sender has Veil of Anonymity
   if (

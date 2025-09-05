@@ -4,8 +4,9 @@ import { MongoClient, Db } from "mongodb";
 // may not have occurred yet. Try loading from .env/.env.local as a fallback.
 if (!process.env.MONGODB_URI) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    require("dotenv").config();
+    // Use dynamic import to satisfy lint without eslint-disable
+    // Note: optional for scripts; Next apps typically have env loaded already
+    await import("dotenv").then((m) => m.config());
   } catch {
     // ignore optional dotenv failure in environments that don't have it
   }

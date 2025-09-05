@@ -88,6 +88,11 @@ export const marketplaceRouter = createTRPCRouter({
       // Ensure user has enough credits
       const me = await users.findOne({ _id: ctx.user._id });
       if (!me) throw new Error("User not found");
+      if (me.isFrozen)
+        throw new Error("Your account is frozen by an administrator.");
+      if (me.timeoutUntil && new Date(me.timeoutUntil).getTime() > Date.now()) {
+        throw new Error("You are on timeout and cannot purchase right now.");
+      }
       if ((me.credits || 0) < price) throw new Error("Insufficient credits");
 
       // Check for sequential rank unlocking
@@ -152,6 +157,9 @@ export const marketplaceRouter = createTRPCRouter({
           reason: `Purchase: ${item.name}`,
           timestamp: new Date(),
           type: "marketplace_purchase",
+          itemId: item.itemId,
+          itemName: item.name,
+          purchaser: from,
         });
         broadcastLeaderboardUpdate();
       } catch {}

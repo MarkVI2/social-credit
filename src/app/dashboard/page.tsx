@@ -221,7 +221,7 @@ export default function DashboardPage() {
                             borderColor: "var(--foreground)",
                           }}
                         >
-                          Visit People’s Marketplace
+                          Visit People's Marketplace
                         </button>
                       </div>
                     </div>
@@ -240,6 +240,31 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Balance */}
+            <div className="w-full">
+              <div
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card"
+                style={{
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  borderColor: "var(--foreground)",
+                }}
+              >
+                <h3
+                  className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-3"
+                  style={{ color: "var(--accent)" }}
+                >
+                  Balance
+                </h3>
+                <p className="font-mono text-xs sm:text-sm">
+                  Your current balance is:{" "}
+                  <strong style={{ color: "var(--accent)" }}>
+                    {user.credits}
+                  </strong>
+                </p>
               </div>
             </div>
 

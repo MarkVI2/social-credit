@@ -27,6 +27,21 @@ export const transactionsRouter = createTRPCRouter({
       const db = await getDatabase();
       const coll = db.collection("userinformation");
 
+      // Enforce account status (freeze/timeout)
+      const meDoc = await coll.findOne({ _id: ctx.user._id });
+      if (!meDoc) throw new Error("User not found");
+      if (meDoc.isFrozen) {
+        throw new Error("Your account is frozen by an administrator.");
+      }
+      if (
+        meDoc.timeoutUntil &&
+        new Date(meDoc.timeoutUntil).getTime() > Date.now()
+      ) {
+        throw new Error(
+          "You are on timeout and cannot send credits right now."
+        );
+      }
+
       const toQuery = toId.includes("@")
         ? { email: toId.toLowerCase() }
         : { username: toId };

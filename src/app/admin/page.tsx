@@ -22,6 +22,20 @@ export default function AdminPage() {
   const total = usersData?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
+  // Context menu state for destructive admin actions
+  const [ctxMenu, setCtxMenu] = useState<{
+    open: boolean;
+    x: number;
+    y: number;
+    user?: {
+      _id?: { toString: () => string } | string;
+      username?: string;
+      email?: string;
+      isFrozen?: boolean;
+      timeoutUntil?: string | Date | null;
+    };
+  }>({ open: false, x: 0, y: 0 });
+
   // theme
   const [theme, setTheme] = useState<"light" | "dark">("light");
   // Keep minimal token state for components that still need it
@@ -249,6 +263,15 @@ export default function AdminPage() {
                       <tr
                         key={u._id?.toString() || Math.random().toString()}
                         className="odd:bg-white/30"
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setCtxMenu({
+                            open: true,
+                            x: e.clientX,
+                            y: e.clientY,
+                            user: u as any,
+                          });
+                        }}
                       >
                         <td className="p-2 align-top">
                           <div className="font-mono text-sm">{u.username}</div>
@@ -324,6 +347,14 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+      {ctxMenu.open && ctxMenu.user && (
+        <UserContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          user={ctxMenu.user}
+          onClose={() => setCtxMenu((s) => ({ ...s, open: false }))}
+        />
+      )}
     </div>
   );
 }
@@ -467,6 +498,199 @@ function InlineGrant({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function UserContextMenu({
+  x,
+  y,
+  user,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  user: {
+    _id?: { toString: () => string } | string;
+    username?: string;
+    email?: string;
+    isFrozen?: boolean;
+    timeoutUntil?: string | Date | null;
+  };
+  onClose: () => void;
+}) {
+  const { freezeUser, timeoutUser, deleteUser } = useAdmin();
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      // Close if clicking outside the menu
+      const el = document.getElementById("admin-user-context-menu");
+      if (el && !el.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    setTimeout(() => {
+      document.addEventListener("mousedown", onDown);
+      document.addEventListener("keydown", onKey);
+    }, 0);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  const id =
+    typeof user._id === "string" ? user._id : user._id?.toString() || "";
+  const label = user.username || user.email || id;
+
+  const doFreeze = async (frozen: boolean) => {
+    try {
+      await freezeUser.mutateAsync({ userId: id, frozen });
+    } catch (e) {
+      console.error(e);
+      alert("Failed to update freeze state");
+    } finally {
+      onClose();
+    }
+  };
+
+  const doTimeoutMs = async (ms: number) => {
+    try {
+      const until = new Date(Date.now() + ms);
+      await timeoutUser.mutateAsync({ userId: id, until });
+    } catch (e) {
+      console.error(e);
+      alert("Failed to set timeout");
+    } finally {
+      onClose();
+    }
+  };
+
+  const clearTimeoutNow = async () => {
+    try {
+      // Set a past date to effectively clear timeout
+      await timeoutUser.mutateAsync({ userId: id, until: new Date(0) });
+    } catch (e) {
+      console.error(e);
+      alert("Failed to clear timeout");
+    } finally {
+      onClose();
+    }
+  };
+
+  const doDelete = async () => {
+    if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+    try {
+      await deleteUser.mutateAsync({ userId: id });
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete user");
+    } finally {
+      onClose();
+    }
+  };
+
+  const menuStyle: React.CSSProperties = {
+    position: "fixed",
+    top: y + 2,
+    left: x + 2,
+    zIndex: 1000,
+    background: "var(--background)",
+    border: "4px solid var(--foreground)",
+    boxShadow: "6px 6px 0 0 #28282B",
+    minWidth: 220,
+  };
+
+  return (
+    <div id="admin-user-context-menu" style={menuStyle} role="menu">
+      <div
+        className="px-3 py-2 border-b-2 font-mono text-xs opacity-80"
+        style={{ borderColor: "var(--foreground)" }}
+      >
+        Actions for {label}
+      </div>
+      <button
+        onClick={() => doFreeze(!(user.isFrozen ?? false))}
+        className="block w-full text-left px-3 py-2 border-b-2 hover:opacity-90"
+        style={{ borderColor: "var(--foreground)" }}
+        role="menuitem"
+      >
+        {user.isFrozen ? "Unfreeze account" : "Freeze account"}
+      </button>
+      <div
+        className="px-3 py-1 border-b-2"
+        style={{ borderColor: "var(--foreground)" }}
+      >
+        <div className="font-mono text-xs opacity-80 mb-1">Timeout</div>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => doTimeoutMs(15 * 60 * 1000)}
+            className="border-2 px-2 py-0.5 btn-3d"
+            style={{
+              background: "var(--background)",
+              borderColor: "var(--foreground)",
+            }}
+          >
+            15m
+          </button>
+          <button
+            onClick={() => doTimeoutMs(60 * 60 * 1000)}
+            className="border-2 px-2 py-0.5 btn-3d"
+            style={{
+              background: "var(--background)",
+              borderColor: "var(--foreground)",
+            }}
+          >
+            1h
+          </button>
+          <button
+            onClick={() => doTimeoutMs(24 * 60 * 60 * 1000)}
+            className="border-2 px-2 py-0.5 btn-3d"
+            style={{
+              background: "var(--background)",
+              borderColor: "var(--foreground)",
+            }}
+          >
+            24h
+          </button>
+          <button
+            onClick={async () => {
+              const input = prompt("Timeout hours (e.g., 2.5):", "1");
+              if (!input) return;
+              const hours = Number(input);
+              if (!isFinite(hours) || hours <= 0)
+                return alert("Invalid number");
+              await doTimeoutMs(hours * 60 * 60 * 1000);
+            }}
+            className="border-2 px-2 py-0.5 btn-3d"
+            style={{
+              background: "var(--background)",
+              borderColor: "var(--foreground)",
+            }}
+          >
+            Custom
+          </button>
+          <button
+            onClick={clearTimeoutNow}
+            className="border-2 px-2 py-0.5 btn-3d"
+            style={{
+              background: "var(--background)",
+              borderColor: "var(--foreground)",
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+      <button
+        onClick={doDelete}
+        className="block w-full text-left px-3 py-2 hover:opacity-90"
+        style={{ color: "#b00020" }}
+        role="menuitem"
+      >
+        Delete account
+      </button>
     </div>
   );
 }

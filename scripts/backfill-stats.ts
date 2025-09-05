@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { getDatabase } from "../src/lib/mongodb";
 
 async function main() {
@@ -8,9 +9,17 @@ async function main() {
   console.log("Backfilling spentLifetime and transactionsSent...");
   const sentAgg = await tx
     .aggregate([
+      // Only human users: exclude system accounts and anonymized; ignore admin adjustment logs
+      {
+        $match: {
+          from: { $nin: ["mint", "classBank", "Anonymous Komrade"] },
+          $or: [{ type: { $exists: false } }, { type: { $ne: "admin" } }],
+        },
+      },
       {
         $group: {
           _id: "$from",
+          // 'amount' is positive value to 'to'; spending is deducted from sender
           totalSpent: { $sum: "$amount" },
           countSent: { $sum: 1 },
         },
@@ -18,20 +27,28 @@ async function main() {
     ])
     .toArray();
   for (const doc of sentAgg) {
-    await users.updateMany(
-      { $or: [{ username: doc._id }, { email: doc._id }] },
-      {
-        $set: {
-          spentLifetime: doc.totalSpent,
-          transactionsSent: doc.countSent,
-        },
-      }
-    );
+    const key = String(doc._id);
+    const filter = key.includes("@")
+      ? { email: key.toLowerCase() }
+      : { username: key };
+    await users.updateMany(filter as any, {
+      $set: {
+        // Ensure non-negative lifetime; treat aggregated sum as absolute spending
+        spentLifetime: Math.abs(doc.totalSpent || 0),
+        transactionsSent: doc.countSent,
+      },
+    });
   }
 
   console.log("Backfilling receivedLifetime and transactionsReceived...");
   const recvAgg = await tx
     .aggregate([
+      {
+        $match: {
+          to: { $nin: ["mint", "classBank", "Anonymous Komrade", "all"] },
+          $or: [{ type: { $exists: false } }, { type: { $ne: "admin" } }],
+        },
+      },
       {
         $group: {
           _id: "$to",
@@ -42,15 +59,16 @@ async function main() {
     ])
     .toArray();
   for (const doc of recvAgg) {
-    await users.updateMany(
-      { $or: [{ username: doc._id }, { email: doc._id }] },
-      {
-        $set: {
-          receivedLifetime: doc.totalReceived,
-          transactionsReceived: doc.countReceived,
-        },
-      }
-    );
+    const key = String(doc._id);
+    const filter = key.includes("@")
+      ? { email: key.toLowerCase() }
+      : { username: key };
+    await users.updateMany(filter as any, {
+      $set: {
+        receivedLifetime: doc.totalReceived,
+        transactionsReceived: doc.countReceived,
+      },
+    });
   }
 
   console.log("Backfill complete.");
