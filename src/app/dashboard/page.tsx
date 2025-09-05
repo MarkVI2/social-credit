@@ -8,6 +8,7 @@ import { IconLogout } from "@tabler/icons-react";
 import { useUsers } from "@/hooks/useUsers";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
+import { trpc } from "@/trpc/client";
 //
 
 // Transaction item shape (user + global recent logs)
@@ -27,10 +28,12 @@ export default function DashboardPage() {
   const [showSettings, setShowSettings] = useState(false);
 
   // Use tRPC hooks
-  const { user, balance, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, refreshAuth } = useAuth();
   const { allUsers: users } = useUsers();
   const { transactionHistory, getGlobalHistory, transfer, isTransferring } =
     useTransactions();
+  const utils = trpc.useUtils();
+  const meQuery = trpc.user.getMe.useQuery(undefined, { enabled: !!user, staleTime: 5000 });
 
   // Get global history
   const globalHistoryQuery = getGlobalHistory(10);
@@ -84,6 +87,15 @@ export default function DashboardPage() {
     return msg.replace("{name}", name);
   }, [greetings, user?.username]);
 
+  // Prefer server-sourced credits (authoritative), fallback to local user
+  const displayCredits = useMemo(() => {
+    const serverCredits = meQuery.data?.user?.credits;
+    if (typeof serverCredits === "number") return Math.trunc(serverCredits);
+    const localCredits = user?.credits;
+    if (typeof localCredits === "number") return Math.trunc(localCredits);
+    return 0;
+  }, [meQuery.data?.user?.credits, user?.credits]);
+
   // Validation state
   const matchedUser = useMemo(
     () =>
@@ -123,6 +135,12 @@ export default function DashboardPage() {
     try {
       await transfer(target.username, reason);
       setReason("");
+      // Refresh auth/user to update local credits immediately
+      if (user) {
+        await refreshAuth(user);
+      }
+  // Invalidate tRPC user to refresh server-sourced credits
+  await utils.user.getMe.invalidate();
     } catch (e) {
       console.error("[Send] Transfer error", e);
     }
@@ -265,7 +283,7 @@ export default function DashboardPage() {
                       className="font-heading font-extrabold tracking-wider text-4xl sm:text-5xl md:text-6xl"
                       style={{ color: "var(--accent)" }}
                     >
-                      {Math.trunc((user.credits as number) ?? 0)}
+                      {displayCredits}
                     </div>
                     <div className="font-mono text-[11px] sm:text-xs opacity-80">
                       credits

@@ -1,6 +1,6 @@
 {
   "name": "social-credit",
-  "version": "0.5.0",
+  "version": "0.6.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,8 +12,6 @@
     "reset-credits": "tsx scripts/reset-credits.ts",
     "test-mail": "tsx scripts/test-mail.ts",
     "seed-marketplace": "tsx scripts/seed-marketplace.ts",
-    "audit-marketplace-ranks": "tsx scripts/audit-marketplace-ranks.ts",
-    "purge-legacy-ranks": "tsx scripts/purge-legacy-ranks.ts",
     "backfill-ranks": "tsx scripts/backfill-ranks.ts",
     "backfill-stats": "tsx scripts/backfill-stats.ts"
   },
