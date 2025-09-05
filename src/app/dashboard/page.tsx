@@ -33,7 +33,10 @@ export default function DashboardPage() {
   const { transactionHistory, getGlobalHistory, transfer, isTransferring } =
     useTransactions();
   const utils = trpc.useUtils();
-  const meQuery = trpc.user.getMe.useQuery(undefined, { enabled: !!user, staleTime: 5000 });
+  const meQuery = trpc.user.getMe.useQuery(undefined, {
+    enabled: !!user,
+    staleTime: 5000,
+  });
 
   // Get global history
   const globalHistoryQuery = getGlobalHistory(10);
@@ -139,8 +142,8 @@ export default function DashboardPage() {
       if (user) {
         await refreshAuth(user);
       }
-  // Invalidate tRPC user to refresh server-sourced credits
-  await utils.user.getMe.invalidate();
+      // Invalidate tRPC user to refresh server-sourced credits
+      await utils.user.getMe.invalidate();
     } catch (e) {
       console.error("[Send] Transfer error", e);
     }
