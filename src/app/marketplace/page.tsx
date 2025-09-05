@@ -583,11 +583,15 @@ function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
     const items = listQuery.data as any[];
     const ranks = items
       .filter((item) => item.category === "rank")
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      .sort(
+        (a, b) =>
+          (classifyItem(a).order ?? a.order ?? 0) -
+          (classifyItem(b).order ?? b.order ?? 0)
+      );
     const utilities = items.filter((item) => item.category === "utility");
 
     // Determine user's current rank order. Base rank is Comrade Jr. (min 20).
-    const baseOrder = 1; // treat Comrade Jr. as order 1 baseline
+    const baseOrder = 20; // treat Comrade Jr. as baseline threshold
     let userOrder = baseOrder;
     const earned = me.data?.user?.earnedLifetime ?? 0;
     // Try to infer from rank items using sku 'rank:<min>' thresholds
@@ -598,7 +602,7 @@ function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
           typeof r.sku === "string" && r.sku.startsWith("rank:")
             ? Number(r.sku.split(":")[1])
             : undefined,
-        order: classifyItem(r).order ?? r.order ?? 0,
+        order: classifyItem(r).order ?? r.order ?? undefined,
       }))
       .sort((a, b) => (a.min ?? 0) - (b.min ?? 0));
     if (rankWithMin.length > 0) {
@@ -761,21 +765,27 @@ function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
             const owned = Boolean(derivedOwnedIds?.has(it.id));
             let rankNotHighEnough = false;
             if (it.category === "rank") {
-              const requiredRankOrder = it.order - 1;
-              if (requiredRankOrder > 0) {
-                const hasRequiredRank = Boolean(
-                  // Derived ownership covers previous ranks
-                  derivedOwnedIds?.size &&
-                    Array.from(derivedOwnedIds).some((id) => {
-                      const item = allItems.find((x) => x.id === id);
-                      if (!item) return false;
-                      const ord = classifyItem(item).order ?? item.order ?? 0;
-                      return ord === requiredRankOrder;
-                    })
+              // Find previous rank in the increasing series
+              const orderedRanks = allItems
+                .filter((x) => x.category === "rank")
+                .sort(
+                  (a, b) =>
+                    (classifyItem(a).order ?? a.order ?? 0) -
+                    (classifyItem(b).order ?? b.order ?? 0)
                 );
-                if (!hasRequiredRank) {
-                  rankNotHighEnough = true;
-                }
+              const currentOrder = classifyItem(it).order ?? it.order ?? 0;
+              const prev = [...orderedRanks]
+                .filter(
+                  (r) => (classifyItem(r).order ?? r.order ?? 0) < currentOrder
+                )
+                .pop();
+              if (prev) {
+                const prevId = prev.id;
+                const hasPrev = derivedOwnedIds?.has(prevId);
+                rankNotHighEnough = !hasPrev;
+              } else {
+                // Base rank has no requirement
+                rankNotHighEnough = false;
               }
             }
 

@@ -117,7 +117,12 @@ export const userRouter = createTRPCRouter({
   updateMe: protectedProcedure
     .input(
       z.object({
-        username: z.string().min(1).optional(),
+        username: z
+          .string()
+          .min(3, "Username must be at least 3 characters")
+          .max(32, "Username too long")
+          .regex(/^[a-zA-Z0-9_]+$/, "Only letters, numbers, and _ allowed")
+          .optional(),
         email: z.string().email().optional(),
       })
     )
@@ -125,12 +130,23 @@ export const userRouter = createTRPCRouter({
       try {
         const db = await getDatabase();
         const coll = db.collection<User>("userinformation");
+        const inventory = db.collection("userInventory");
 
         const updateFields: Partial<User> & { updatedAt: Date } = {
           updatedAt: new Date(),
         };
 
         if (input.username) {
+          // Must own the USERNAME_CHANGE_TOKEN utility to rename
+          const token = await inventory.findOne({
+            userId: ctx.user._id,
+            sku: "USERNAME_CHANGE_TOKEN",
+          });
+          if (!token) {
+            throw new Error(
+              "You must purchase the 'Decree of Renaming' before changing your username."
+            );
+          }
           // Check if username is already taken
           const existingUser = await coll.findOne({
             username: input.username,
@@ -140,6 +156,8 @@ export const userRouter = createTRPCRouter({
             throw new Error("Username already taken");
           }
           updateFields.username = input.username;
+          // Consume the token after successful validation to prevent reuse
+          await inventory.deleteOne({ _id: token._id });
         }
 
         if (input.email) {

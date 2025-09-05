@@ -130,24 +130,25 @@ export const marketplaceRouter = createTRPCRouter({
 
       // Derive classification if missing and enforce sequential rank unlocking
       const cls = classifyItem(item);
-      if (cls.category === "rank" && (cls.order ?? 0) > 1) {
-        const requiredRankOrder = (cls.order ?? 1) - 1;
-        // Fetch potential ranks (include those lacking explicit category but classifiable)
+      if (cls.category === "rank") {
+        // Fetch all rank items and sort by increasing order (min threshold)
         const allDocs = await items.find({}).toArray();
-        const allRanks = allDocs.filter(
-          (r) => classifyItem(r).category === "rank"
-        );
-        const requiredRank = allRanks.find(
-          (r) => (classifyItem(r).order ?? 0) === requiredRankOrder
-        );
-        if (requiredRank) {
-          const hasRequiredRank = await inventory.findOne({
+        const orderedRanks = allDocs
+          .filter((r) => classifyItem(r).category === "rank")
+          .sort(
+            (a, b) =>
+              (classifyItem(a).order ?? 0) - (classifyItem(b).order ?? 0)
+          );
+        const idx = orderedRanks.findIndex((r) => r.itemId === item.itemId);
+        if (idx > 0) {
+          const requiredPrev = orderedRanks[idx - 1];
+          const hasPrev = await inventory.findOne({
             userId: ctx.user._id,
-            itemId: requiredRank.itemId,
+            itemId: requiredPrev.itemId,
           });
-          if (!hasRequiredRank) {
+          if (!hasPrev) {
             throw new Error(
-              `You must own ${requiredRank.name} to purchase ${item.name}.`
+              `You must own ${requiredPrev.name} to purchase ${item.name}.`
             );
           }
         }

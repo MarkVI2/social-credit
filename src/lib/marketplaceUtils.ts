@@ -23,9 +23,8 @@ export function classifyItem(item: any): {
     const minStr = sku.split(":")[1];
     const min = Number(minStr);
     if (Number.isFinite(min)) {
-      const order =
-        min <= 20 ? 1 : min <= 40 ? 2 : min <= 70 ? 3 : min <= 100 ? 4 : 5;
-      return { category: "rank", order };
+      // Use min threshold directly as order so ordering is strictly increasing
+      return { category: "rank", order: min };
     }
     return { category: "rank", order: 1 };
   }
