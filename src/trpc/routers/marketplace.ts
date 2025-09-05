@@ -58,6 +58,8 @@ export const marketplaceRouter = createTRPCRouter({
       price: i.price,
       imageUrl: i.imageUrl,
       sku: i.sku,
+      category: i.category,
+      order: i.order,
     }));
   }),
 
@@ -82,12 +84,42 @@ export const marketplaceRouter = createTRPCRouter({
       });
       if (!item) throw new Error("Item not found");
       const price = Number(item.price || 0);
-      if (!price || price <= 0) throw new Error("Invalid item price");
 
       // Ensure user has enough credits
       const me = await users.findOne({ _id: ctx.user._id });
       if (!me) throw new Error("User not found");
       if ((me.credits || 0) < price) throw new Error("Insufficient credits");
+
+      // Check for sequential rank unlocking
+      if (item.category === "rank" && item.order > 1) {
+        const requiredRankOrder = item.order - 1;
+        const allRanks = await items.find({ category: "rank" }).toArray();
+        const requiredRank = allRanks.find(
+          (r) => r.order === requiredRankOrder
+        );
+        if (requiredRank) {
+          const hasRequiredRank = await inventory.findOne({
+            userId: ctx.user._id,
+            itemId: requiredRank.itemId,
+          });
+          if (!hasRequiredRank) {
+            throw new Error(
+              `You must own ${requiredRank.name} to purchase ${item.name}.`
+            );
+          }
+        }
+      }
+
+      // Check if user already owns the item
+      const existingInventoryItem = await inventory.findOne({
+        userId: ctx.user._id,
+        itemId: item.itemId,
+      });
+
+      if (existingInventoryItem) {
+        // Item already exists, so we don't add it again.
+        return { success: true, message: "Item already in inventory." };
+      }
 
       // Deduct and add to inventory atomically-ish; then credit class bank
       await users.updateOne(

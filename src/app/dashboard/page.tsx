@@ -95,6 +95,15 @@ export default function DashboardPage() {
   const isValidUser = !!matchedUser;
   const isValidReason = reason.trim().length > 0;
   const canSubmit = isValidUser && isValidReason;
+  // Rate limit: only one send every 2 minutes
+  const lastMyTx = recent[0];
+  const lastTxTime = lastMyTx ? new Date(lastMyTx.timestamp).getTime() : 0;
+  const timeSinceLast = Date.now() - lastTxTime;
+  const rateLimitMs = 2 * 60 * 1000;
+  const isRateLimited = Boolean(lastMyTx) && timeSinceLast < rateLimitMs;
+  const retrySeconds = isRateLimited
+    ? Math.ceil((rateLimitMs - timeSinceLast) / 1000)
+    : 0;
 
   // Check authentication
   useEffect(() => {
@@ -357,8 +366,8 @@ export default function DashboardPage() {
                 </button> */}
                 <button
                   onClick={handleSend}
-                  disabled={!canSubmit || isTransferring}
-                  aria-disabled={!canSubmit || isTransferring}
+                  disabled={!canSubmit || isTransferring || isRateLimited}
+                  aria-disabled={!canSubmit || isTransferring || isRateLimited}
                   className="flex-1 text-white py-2 sm:py-2.5 px-3 sm:px-3.5 rounded-none font-bold border-4 hover:opacity-90 btn-3d disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none"
                   style={{
                     background: "var(--accent)",
@@ -372,6 +381,12 @@ export default function DashboardPage() {
                 <p className="mt-1.5 font-mono text-[11px] opacity-80">
                   Hint: select a valid user and enter a reason. Each send
                   transfers 2 credits.
+                </p>
+              )}
+              {isRateLimited && (
+                <p className="mt-1.5 font-mono text-[11px] opacity-80">
+                  Rate limit exceeded. Try again in {retrySeconds} second
+                  {retrySeconds > 1 ? "s" : ""}.
                 </p>
               )}
               {showSettings && (

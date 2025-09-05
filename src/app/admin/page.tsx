@@ -5,18 +5,23 @@ import LeaderboardSidebar from "@/components/LeaderboardSidebar";
 import { IconSearch, IconSun, IconMoon } from "@tabler/icons-react";
 import Link from "next/link";
 import { useAdmin } from "@/hooks/useAdmin";
+import TransactionEntry from "@/components/TransactionEntry";
 
 export default function AdminPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const limit = 20;
-  
+
   // Use tRPC hook for users data
-  const { data: usersData, isLoading: loading } = useAdmin().getUsers(query, page, limit);
+  const { data: usersData, isLoading: loading } = useAdmin().getUsers(
+    query,
+    page,
+    limit
+  );
   const users = usersData?.items || [];
   const total = usersData?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
-  
+
   // theme
   const [theme, setTheme] = useState<"light" | "dark">("light");
   // Keep minimal token state for components that still need it
@@ -241,7 +246,10 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {users.map((u) => (
-                      <tr key={u._id?.toString() || Math.random().toString()} className="odd:bg-white/30">
+                      <tr
+                        key={u._id?.toString() || Math.random().toString()}
+                        className="odd:bg-white/30"
+                      >
                         <td className="p-2 align-top">
                           <div className="font-mono text-sm">{u.username}</div>
                           <div
@@ -333,7 +341,7 @@ function InlineGrant({
   const [amount, setAmount] = useState<number>(0);
   const [reason, setReason] = useState("");
   const [source, setSource] = useState<"admin" | "classBank">("admin");
-  
+
   // Use tRPC hook for updating credits
   const { updateCredits, isUpdatingCredits } = useAdmin();
 
@@ -641,10 +649,14 @@ function AdminRecentTransactions() {
     message?: string;
     data?: ActivityItemData | null;
   }
-  
+
   // Use tRPC hook instead of manual fetch
-  const { data: activityData, isLoading, refetch } = useAdmin().getActivity(0, 15);
-  const items = (activityData?.items || [] as unknown) as ActivityItem[];
+  const {
+    data: activityData,
+    isLoading,
+    refetch,
+  } = useAdmin().getActivity(0, 15);
+  const items = (activityData?.items || ([] as unknown)) as ActivityItem[];
 
   return (
     <div
@@ -689,27 +701,7 @@ function AdminRecentTransactions() {
             style={{ borderColor: "var(--foreground)" }}
           >
             {items.map((a, i) => (
-              <li key={i} className="py-2">
-                <div className="text-[11px] sm:text-xs font-mono opacity-80">
-                  {new Date(a.createdAt).toLocaleString()}
-                </div>
-                <div className="text-xs sm:text-sm font-mono mt-1 leading-relaxed break-words">
-                  {a.message ? (
-                    <>{a.message}</>
-                  ) : a.action === "credit_transfer" && a.data ? (
-                    <>
-                      <span className="font-semibold">{a.data.from}</span> →{" "}
-                      <span className="font-semibold">{a.data.to}</span> :{" "}
-                      {a.data.amount}cr
-                      {a.data.reason ? ` (${a.data.reason})` : ""}
-                    </>
-                  ) : (
-                    <span>
-                      {a.type}/{a.action}
-                    </span>
-                  )}
-                </div>
-              </li>
+              <TransactionEntry key={i} transaction={a as any} />
             ))}
           </ul>
         </div>

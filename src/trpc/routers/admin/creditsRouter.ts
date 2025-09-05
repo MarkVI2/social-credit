@@ -181,7 +181,9 @@ export const creditsRouter = createTRPCRouter({
                 credits: Math.abs(amount),
               });
 
-        await logTransaction({
+        await db.collection("transactionHistory").insertOne({
+          type: "admin",
+          action: amount > 0 ? "mint" : "burn",
           from:
             amount > 0
               ? sourceAccount === "admin"
@@ -197,19 +199,6 @@ export const creditsRouter = createTRPCRouter({
           amount: Math.abs(amount),
           reason,
           timestamp: new Date(),
-          type: "admin_adjustment",
-        });
-
-        await recordActivity({
-          type: "admin",
-          action: amount > 0 ? "mint" : "burn",
-          data: {
-            admin: me.username || me.email,
-            user: target.username || target.email,
-            amount: Math.abs(amount),
-            sourceAccount,
-            reason,
-          },
           message,
         });
 
@@ -286,15 +275,14 @@ export const creditsRouter = createTRPCRouter({
         await Promise.all(updates);
         if (txInserts.length)
           await db.collection("transactionHistory").insertMany(txInserts);
-        await recordActivity({
+        await db.collection("transactionHistory").insertOne({
           type: "admin",
           action: "mint",
-          data: {
-            admin: ctx.user.username || ctx.user.email,
-            amount: input.amount,
-            reason: input.reason,
-            distributeToAll: true,
-          },
+          from: "mint",
+          to: "all",
+          amount: input.amount,
+          reason: input.reason,
+          timestamp: now,
           message: `${ctx.user.username || ctx.user.email} minted ${
             input.amount
           } to all users`,

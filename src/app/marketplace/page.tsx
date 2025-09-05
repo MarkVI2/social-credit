@@ -79,9 +79,11 @@ function Modal({
 function MarketplaceItemCard({
   item,
   owned,
+  disabled,
 }: {
   item: StoreItem;
   owned?: boolean;
+  disabled?: boolean;
 }) {
   const utils = trpc.useUtils();
   // Note: marketplace router may not exist yet; guard to avoid runtime errors
@@ -93,10 +95,12 @@ function MarketplaceItemCard({
     onSuccess: async () => {
       // Invalidate user data to refresh credit balance
       await utils.user.getMe.invalidate();
+      await utils.marketplace.getMyInventory.invalidate();
     },
   });
 
-  const disabled = !purchase || purchase.isLoading || owned;
+  const isPurchaseDisabled =
+    !purchase || purchase.isPending || owned || disabled;
 
   return (
     <div
@@ -134,16 +138,18 @@ function MarketplaceItemCard({
         <button
           type="button"
           onClick={() => purchase?.mutate?.({ itemId: item.id })}
-          disabled={disabled}
+          disabled={isPurchaseDisabled}
           className="px-3 py-1 border-2 rounded-none font-mono text-xs sm:text-sm"
           style={{
-            background: disabled ? "transparent" : "var(--accent)",
-            color: disabled ? "var(--foreground)" : "var(--background)",
+            background: isPurchaseDisabled ? "transparent" : "var(--accent)",
+            color: isPurchaseDisabled
+              ? "var(--foreground)"
+              : "var(--background)",
             borderColor: "var(--foreground)",
-            opacity: disabled ? 0.4 : 1,
+            opacity: isPurchaseDisabled ? 0.4 : 1,
           }}
         >
-          {purchase?.isLoading ? "Purchasing…" : "Purchase"}
+          {purchase?.isPending ? "Purchasing…" : "Purchase"}
         </button>
       </div>
     </div>
@@ -561,41 +567,46 @@ function AdminAuctionCreator() {
 
 // Helper: People's Store (lists items via tRPC and renders cards)
 function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
-  // Always call this hook first to keep hook order stable across renders
+  const [filter, setFilter] = useState<"all" | "ranks" | "utilities">("all");
   const me = trpc.user.getMe.useQuery(undefined, { staleTime: 5000 });
-  const myRank = (me.data?.user as any)?.rank as string | undefined;
-  // Router may not exist yet; safe-guard the hook usage
-  const marketplaceTrpc = (trpc as any).marketplace as
-    | { listItems: { useQuery: Function } }
-    | undefined;
+  const myInventory = trpc.marketplace.getMyInventory.useQuery(undefined, {
+    staleTime: 5000,
+  });
+  const listQuery = trpc.marketplace.listItems.useQuery();
 
-  // Only call the hook if available (consistent across renders since code is static)
-  const listQuery = marketplaceTrpc?.listItems?.useQuery
-    ? marketplaceTrpc.listItems.useQuery()
-    : undefined;
+  const { filteredItems, allItems } = useMemo(() => {
+    if (!listQuery.data) return { filteredItems: [], allItems: [] };
+    const items = listQuery.data as any[];
+    let ranks = items
+      .filter((item) => item.category === "rank")
+      .sort((a, b) => a.order - b.order);
+    const utilities = items.filter((item) => item.category === "utility");
 
-  if (!listQuery) {
-    return (
-      <section
-        className="p-3 sm:p-4 border-4 rounded-none shadow-card-sm"
-        style={{
-          background: "var(--background)",
-          borderColor: "var(--foreground)",
-        }}
-      >
-        <h2
-          className="font-heading font-bold uppercase tracking-wider mb-2"
-          style={{ color: "var(--accent)" }}
-        >
-          People’s Store
-        </h2>
-        <p className="font-mono text-xs sm:text-sm opacity-80">
-          The People's Store is awaiting directives from the Committee. All is
-          quiet.
-        </p>
-      </section>
-    );
-  }
+    if (myInventory.data) {
+      const ownedRanks = myInventory.data.filter((item) =>
+        item.sku.startsWith("RANK_")
+      );
+      if (ownedRanks.length > 0) {
+        const highestOwnedRankOrder = ownedRanks.reduce((maxOrder, rank) => {
+          const rankDetails = items.find((r) => r.sku === rank.sku);
+          return rankDetails && rankDetails.order > maxOrder
+            ? rankDetails.order
+            : maxOrder;
+        }, 0);
+        ranks = ranks.filter((rank) => rank.order > highestOwnedRankOrder);
+      }
+    }
+
+    let filtered;
+    if (filter === "ranks") {
+      filtered = ranks;
+    } else if (filter === "utilities") {
+      filtered = utilities;
+    } else {
+      filtered = [...ranks, ...utilities];
+    }
+    return { filteredItems: filtered, allItems: items };
+  }, [listQuery.data, filter, myInventory.data]);
 
   if (listQuery.isLoading) {
     return (
@@ -641,10 +652,6 @@ function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
     );
   }
 
-  const items = (listQuery.data?.items || listQuery.data) as
-    | StoreItem[]
-    | undefined;
-
   return (
     <section
       className="p-3 sm:p-4 border-4 rounded-none shadow-card-sm"
@@ -659,12 +666,80 @@ function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
       >
         People’s Store
       </h2>
-      {items && items.length > 0 ? (
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setFilter("all")}
+          style={{
+            borderRadius: "9999px",
+            padding: "8px 16px",
+            background:
+              filter === "all" ? "var(--accent)" : "var(--background)",
+            color: filter === "all" ? "white" : "var(--foreground)",
+            border: "2px solid var(--foreground)",
+          }}
+        >
+          All
+        </button>
+        <button
+          onClick={() => setFilter("ranks")}
+          style={{
+            borderRadius: "9999px",
+            padding: "8px 16px",
+            background:
+              filter === "ranks" ? "var(--accent)" : "var(--background)",
+            color: filter === "ranks" ? "white" : "var(--foreground)",
+            border: "2px solid var(--foreground)",
+          }}
+        >
+          Ranks
+        </button>
+        <button
+          onClick={() => setFilter("utilities")}
+          style={{
+            borderRadius: "9999px",
+            padding: "8px 16px",
+            background:
+              filter === "utilities" ? "var(--accent)" : "var(--background)",
+            color: filter === "utilities" ? "white" : "var(--foreground)",
+            border: "2px solid var(--foreground)",
+          }}
+        >
+          Utilities
+        </button>
+      </div>
+      {filteredItems && filteredItems.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {items.map((it) => {
-            const owned =
-              !!myRank && / Badge$/.test(it.name) && it.name.startsWith(myRank);
-            return <MarketplaceItemCard key={it.id} item={it} owned={owned} />;
+          {filteredItems.map((it) => {
+            const owned = myInventory.data?.some(
+              (ownedItem) => ownedItem.itemId === it.id
+            );
+            let rankNotHighEnough = false;
+            if (it.category === "rank") {
+              const requiredRankOrder = it.order - 1;
+              if (requiredRankOrder > 0) {
+                const hasRequiredRank = myInventory.data?.some((ownedItem) => {
+                  const ownedRankDetails = allItems.find(
+                    (item) => item.sku === ownedItem.sku
+                  );
+                  return (
+                    ownedRankDetails &&
+                    ownedRankDetails.order === requiredRankOrder
+                  );
+                });
+                if (!hasRequiredRank) {
+                  rankNotHighEnough = true;
+                }
+              }
+            }
+
+            return (
+              <MarketplaceItemCard
+                key={it.id}
+                item={it}
+                owned={owned}
+                disabled={rankNotHighEnough}
+              />
+            );
           })}
         </div>
       ) : (

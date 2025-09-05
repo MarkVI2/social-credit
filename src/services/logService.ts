@@ -39,9 +39,16 @@ export async function listActivity({
   limit?: number;
 }) {
   const db = await getDatabase();
-  const col = db.collection<ActivityLog>("activityLogs");
-  const cursor = col.find({}, { sort: { createdAt: -1 }, skip, limit });
-  const items = await cursor.toArray();
+  // Fetch from the consolidated transactionHistory collection
+  const col = db.collection<any>("transactionHistory");
+  // Sort by timestamp descending
+  const cursor = col.find({}, { sort: { timestamp: -1 }, skip, limit });
+  const rawItems = await cursor.toArray();
+  // Map timestamp field to createdAt for backward compatibility
+  const items = rawItems.map((doc) => ({
+    ...doc,
+    createdAt: (doc as any).timestamp,
+  }));
   const total = await col.countDocuments();
   return { items, total };
 }
