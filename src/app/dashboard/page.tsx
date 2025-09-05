@@ -253,18 +253,25 @@ export default function DashboardPage() {
                   borderColor: "var(--foreground)",
                 }}
               >
-                <h3
-                  className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-3"
-                  style={{ color: "var(--accent)" }}
-                >
-                  Balance
-                </h3>
-                <p className="font-mono text-xs sm:text-sm">
-                  Your current balance is:{" "}
-                  <strong style={{ color: "var(--accent)" }}>
-                    {user.credits}
-                  </strong>
-                </p>
+                <div className="flex flex-col items-center text-center">
+                  <h3
+                    className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-2"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    Balance
+                  </h3>
+                  <div className="flex flex-col items-center gap-1">
+                    <div
+                      className="font-heading font-extrabold tracking-wider text-4xl sm:text-5xl md:text-6xl"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      {Math.trunc((user.credits as number) ?? 0)}
+                    </div>
+                    <div className="font-mono text-[11px] sm:text-xs opacity-80">
+                      credits
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
