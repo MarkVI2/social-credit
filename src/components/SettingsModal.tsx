@@ -9,9 +9,15 @@ interface Props {
 }
 
 export default function SettingsModal({ user, onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<"settings" | "possessions">(
-    "settings"
+  const [activeTab, setActiveTab] = useState<
+    "settings" | "possessions" | "statistics"
+  >("settings");
+  // Fetch user stats for statistics tab
+  const { data: statsData, isLoading: statsLoading } = trpc.user.getMe.useQuery(
+    undefined,
+    { enabled: !!user }
   );
+
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") return "light";
     // 1) Cookie overrides
@@ -132,6 +138,18 @@ export default function SettingsModal({ user, onClose }: Props) {
           >
             Possessions
           </button>
+          <button
+            onClick={() => setActiveTab("statistics")}
+            className="font-heading uppercase tracking-wider text-sm pb-1 border-b-4"
+            style={{
+              color: "var(--foreground)",
+              borderColor:
+                activeTab === "statistics" ? "var(--accent)" : "transparent",
+            }}
+            aria-current={activeTab === "statistics"}
+          >
+            Statistics
+          </button>
         </div>
 
         {/* Tab content */}
@@ -191,6 +209,25 @@ export default function SettingsModal({ user, onClose }: Props) {
                 </button>
               </div>
             </div>
+          </div>
+        ) : activeTab === "statistics" ? (
+          <div className="mt-4 space-y-4">
+            {statsLoading ? (
+              <p className="font-mono text-sm">Loading statistics…</p>
+            ) : statsData?.user ? (
+              <ul className="space-y-2 font-mono text-sm">
+                <li>Credits Balance: {statsData.user.credits}</li>
+                <li>Lifetime Earned: {statsData.user.earnedLifetime}</li>
+                <li>Lifetime Spent: {statsData.user.spentLifetime}</li>
+                <li>Credits Received: {statsData.user.receivedLifetime}</li>
+                <li>Transactions Sent: {statsData.user.transactionsSent}</li>
+                <li>
+                  Transactions Received: {statsData.user.transactionsReceived}
+                </li>
+              </ul>
+            ) : (
+              <p className="font-mono text-sm">No statistics available.</p>
+            )}
           </div>
         ) : (
           <div className="mt-4">

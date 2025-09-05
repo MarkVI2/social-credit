@@ -36,16 +36,32 @@ export const transactionsRouter = createTRPCRouter({
         throw new Error("Recipient not found");
       }
 
+      // Server-side rate-limit: only one transaction every 2 minutes
+      const txCol = db.collection("transactionHistory");
+      const last = await txCol.findOne(
+        { from: fromId },
+        { sort: { timestamp: -1 }, projection: { timestamp: 1 } }
+      );
+      if (
+        last?.timestamp instanceof Date &&
+        Date.now() - last.timestamp.getTime() < 2 * 60 * 1000
+      ) {
+        throw new Error(
+          "Rate limit exceeded. Only one transaction every 2 minutes."
+        );
+      }
       const amount = 2; // fixed amount per requirements
 
-      // Debit sender (only if sufficient balance)
+      // Debit sender (only if sufficient balance) and track spent lifetime
       const fromQuery = ctx.user.email
         ? { email: ctx.user.email }
         : { username: ctx.user.username };
-
       const dec = await coll.updateOne(
         { ...fromQuery, credits: { $gte: amount } },
-        { $inc: { credits: -amount }, $set: { updatedAt: new Date() } }
+        {
+          $inc: { credits: -amount, spentLifetime: amount },
+          $set: { updatedAt: new Date() },
+        }
       );
 
       if (dec.matchedCount !== 1) {
@@ -57,8 +73,9 @@ export const transactionsRouter = createTRPCRouter({
       const newLifetime =
         (toDoc?.earnedLifetime ?? toDoc?.credits ?? 0) + amount;
       const newRank = getVanityRank(newLifetime);
+      // Credit recipient and track received lifetime
       const inc = await coll.updateOne(toQuery, {
-        $inc: { credits: amount },
+        $inc: { credits: amount, receivedLifetime: amount },
         $set: {
           updatedAt: new Date(),
           earnedLifetime: newLifetime,

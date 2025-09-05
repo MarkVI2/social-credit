@@ -434,21 +434,23 @@ export default function DashboardPage() {
                           </div>
                           <div className="text-xs sm:text-sm font-mono mt-1 leading-relaxed break-words">
                             {t.message ? (
-                              <>{t.message}</>
+                              <span
+                                dangerouslySetInnerHTML={{ __html: t.message }}
+                              />
                             ) : (
                               <>
-                                <span className="font-semibold">
+                                <span className="text-red-500 font-bold">
                                   {resolveName(t.from)}
                                 </span>{" "}
                                 has transfered{" "}
                                 <span
-                                  className="font-semibold"
+                                  className="font-bold"
                                   style={{ color: "var(--accent)" }}
                                 >
                                   {t.amount}
                                 </span>{" "}
                                 to{" "}
-                                <span className="font-semibold">
+                                <span className="text-red-500 font-bold">
                                   {resolveName(t.to)}
                                 </span>
                                 {t.reason ? (

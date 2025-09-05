@@ -35,17 +35,32 @@ export const userRouter = createTRPCRouter({
 
   // Get current user's profile (protected)
   getMe: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDatabase();
+    const coll = db.collection<User>("userinformation");
+    const txCol = db.collection("transactionHistory");
+    const userDoc = await coll.findOne({ _id: ctx.user._id });
+    if (!userDoc) {
+      throw new Error("User not found");
+    }
+    // Compute transaction counts
+    const username = userDoc.username;
+    const countSent = await txCol.countDocuments({ from: username });
+    const countReceived = await txCol.countDocuments({ to: username });
     return {
       success: true,
       user: {
-        _id: ctx.user._id,
-        username: ctx.user.username,
-        email: ctx.user.email,
-        credits: ctx.user.credits || 0,
-        role: ctx.user.role,
-        rank: (ctx.user as any).rank,
-        earnedLifetime: (ctx.user as any).earnedLifetime,
-        createdAt: ctx.user.createdAt,
+        _id: userDoc._id,
+        username: userDoc.username,
+        email: userDoc.email,
+        credits: userDoc.credits || 0,
+        role: userDoc.role,
+        rank: userDoc.rank,
+        earnedLifetime: userDoc.earnedLifetime || 0,
+        spentLifetime: userDoc.spentLifetime || 0,
+        receivedLifetime: userDoc.receivedLifetime || 0,
+        transactionsSent: countSent,
+        transactionsReceived: countReceived,
+        createdAt: userDoc.createdAt,
       },
     };
   }),
