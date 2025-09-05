@@ -4,9 +4,11 @@ import { MongoClient, Db } from "mongodb";
 // may not have occurred yet. Try loading from .env/.env.local as a fallback.
 if (!process.env.MONGODB_URI) {
   try {
-    // Use dynamic import to satisfy lint without eslint-disable
-    // Note: optional for scripts; Next apps typically have env loaded already
-    await import("dotenv").then((m) => m.config());
+    // Prefer synchronous require here to avoid top-level await in CJS scripts
+    const dotenv = require("dotenv");
+    // Load both .env.local (if present) and .env
+    dotenv.config({ path: ".env.local" });
+    dotenv.config();
   } catch {
     // ignore optional dotenv failure in environments that don't have it
   }

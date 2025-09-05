@@ -5,6 +5,7 @@ import { MarketplaceItemSchema } from "@/models/marketplace";
 import { ObjectId } from "mongodb";
 import { protectedProcedure } from "../init";
 import { broadcastLeaderboardUpdate } from "./leaderboardRouter";
+import { classifyItem } from "@/lib/marketplaceUtils";
 
 export const marketplaceRouter = createTRPCRouter({
   // Admin only: create a marketplace item
@@ -16,6 +17,8 @@ export const marketplaceRouter = createTRPCRouter({
         price: z.number().positive(),
         imageUrl: z.string().url().optional(),
         sku: z.string().min(1).optional(),
+        category: z.enum(["rank", "utility"]).optional(),
+        order: z.number().int().positive().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -24,7 +27,7 @@ export const marketplaceRouter = createTRPCRouter({
 
       const now = new Date();
       const itemId = new ObjectId().toHexString();
-      const doc = {
+      const doc: any = {
         itemId,
         name: input.name,
         description: input.description,
@@ -34,6 +37,14 @@ export const marketplaceRouter = createTRPCRouter({
         createdAt: now,
         updatedAt: now,
       };
+      // Apply classification if provided or derive from sku/name
+      if (input.category) doc.category = input.category;
+      if (input.order) doc.order = input.order;
+      if (!doc.category) {
+        const cls = classifyItem(doc);
+        doc.category = cls.category;
+        if (cls.order) doc.order = cls.order;
+      }
 
       const res = await coll.insertOne(doc);
       const created = { _id: res.insertedId, ...doc };
@@ -43,25 +54,47 @@ export const marketplaceRouter = createTRPCRouter({
     }),
 
   // Public: list all marketplace items
-  listItems: publicProcedure.query(async () => {
-    const db = await getDatabase();
-    const items = await db
-      .collection("marketplaceItems")
-      .find({}, { sort: { createdAt: -1 } })
-      .toArray();
-    // Optionally validate
-    // items.forEach((i) => MarketplaceItemSchema.parse(i));
-    return items.map((i: any) => ({
-      id: i.itemId ?? i._id?.toString?.(),
-      name: i.name,
-      description: i.description,
-      price: i.price,
-      imageUrl: i.imageUrl,
-      sku: i.sku,
-      category: i.category,
-      order: i.order,
-    }));
-  }),
+  listItems: publicProcedure.query(
+    async (): Promise<
+      Array<{
+        id: string;
+        name: string;
+        description?: string;
+        price: number;
+        imageUrl?: string;
+        sku?: string;
+        category?: "rank" | "utility";
+        order?: number;
+      }>
+    > => {
+      const db = await getDatabase();
+      const items = await db
+        .collection("marketplaceItems")
+        .find({}, { sort: { createdAt: -1 } })
+        .toArray();
+      return items.map((i: any) => {
+        const cls = classifyItem(i);
+        // Optionally validate with augmented fields
+        try {
+          MarketplaceItemSchema.parse({
+            ...i,
+            category: cls.category,
+            order: cls.order,
+          });
+        } catch {}
+        return {
+          id: i.itemId ?? i._id?.toString?.(),
+          name: i.name,
+          description: i.description,
+          price: i.price,
+          imageUrl: i.imageUrl,
+          sku: i.sku,
+          category: cls.category ?? i.category,
+          order: cls.order ?? i.order,
+        };
+      });
+    }
+  ),
 
   // Protected: purchase an item -> deduct credits and add to user inventory
   purchaseItem: protectedProcedure
@@ -95,12 +128,17 @@ export const marketplaceRouter = createTRPCRouter({
       }
       if ((me.credits || 0) < price) throw new Error("Insufficient credits");
 
-      // Check for sequential rank unlocking
-      if (item.category === "rank" && item.order > 1) {
-        const requiredRankOrder = item.order - 1;
-        const allRanks = await items.find({ category: "rank" }).toArray();
+      // Derive classification if missing and enforce sequential rank unlocking
+      const cls = classifyItem(item);
+      if (cls.category === "rank" && (cls.order ?? 0) > 1) {
+        const requiredRankOrder = (cls.order ?? 1) - 1;
+        // Fetch potential ranks (include those lacking explicit category but classifiable)
+        const allDocs = await items.find({}).toArray();
+        const allRanks = allDocs.filter(
+          (r) => classifyItem(r).category === "rank"
+        );
         const requiredRank = allRanks.find(
-          (r) => r.order === requiredRankOrder
+          (r) => (classifyItem(r).order ?? 0) === requiredRankOrder
         );
         if (requiredRank) {
           const hasRequiredRank = await inventory.findOne({

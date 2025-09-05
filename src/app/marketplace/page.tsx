@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import BackHomeButton from "@/components/BackHomeButton";
 import { trpc } from "@/trpc/client";
+import { classifyItem } from "@/lib/marketplaceUtils";
 
 // Types for store items (kept minimal; align with backend when available)
 type StoreItem = {
@@ -577,27 +578,65 @@ function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
   });
   const listQuery = trpc.marketplace.listItems.useQuery();
 
-  const { filteredItems, allItems } = useMemo(() => {
+  const { filteredItems, allItems, derivedOwnedIds } = useMemo(() => {
     if (!listQuery.data) return { filteredItems: [], allItems: [] };
     const items = listQuery.data as any[];
-    let ranks = items
+    const ranks = items
       .filter((item) => item.category === "rank")
-      .sort((a, b) => a.order - b.order);
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const utilities = items.filter((item) => item.category === "utility");
 
-    if (myInventory.data) {
-      const ownedRanks = myInventory.data.filter((item) =>
-        item.sku.startsWith("RANK_")
+    // Determine user's current rank order. Base rank is Comrade Jr. (min 20).
+    const baseOrder = 1; // treat Comrade Jr. as order 1 baseline
+    let userOrder = baseOrder;
+    const earned = me.data?.user?.earnedLifetime ?? 0;
+    // Try to infer from rank items using sku 'rank:<min>' thresholds
+    const rankWithMin = ranks
+      .map((r) => ({
+        item: r,
+        min:
+          typeof r.sku === "string" && r.sku.startsWith("rank:")
+            ? Number(r.sku.split(":")[1])
+            : undefined,
+        order: classifyItem(r).order ?? r.order ?? 0,
+      }))
+      .sort((a, b) => (a.min ?? 0) - (b.min ?? 0));
+    if (rankWithMin.length > 0) {
+      const eligible = rankWithMin.filter((x) =>
+        typeof x.min === "number" ? (x.min as number) <= earned : false
       );
-      if (ownedRanks.length > 0) {
-        const highestOwnedRankOrder = ownedRanks.reduce((maxOrder, rank) => {
-          const rankDetails = items.find((r) => r.sku === rank.sku);
-          return rankDetails && rankDetails.order > maxOrder
-            ? rankDetails.order
-            : maxOrder;
-        }, 0);
-        ranks = ranks.filter((rank) => rank.order > highestOwnedRankOrder);
+      if (eligible.length > 0) {
+        userOrder = Math.max(
+          baseOrder,
+          ...eligible.map((x) => x.order || baseOrder)
+        );
+      } else {
+        // Even with 0 earned, ensure base rank (Comrade Jr.) is considered owned
+        userOrder = baseOrder;
       }
+    } else {
+      // Fallback using name match against current vanity rank if available
+      const vanity = me.data?.user?.rank as string | undefined;
+      if (vanity) {
+        const match = ranks.find((r) =>
+          (r.name || "").toLowerCase().includes(vanity.toLowerCase())
+        );
+        if (match)
+          userOrder = Math.max(
+            baseOrder,
+            classifyItem(match).order ?? match.order ?? baseOrder
+          );
+      }
+    }
+    // Derive owned rank ids: all ranks with order <= userOrder are considered owned
+    const derivedOwnedIds = new Set<string>(
+      ranks
+        .filter((r) => (classifyItem(r).order ?? r.order ?? 0) <= userOrder)
+        .map((r) => r.id)
+    );
+    // Also include actual inventory items as owned (utilities/ranks)
+    for (const inv of myInventory.data || []) {
+      if (inv.itemId) derivedOwnedIds.add(inv.itemId);
     }
 
     let filtered;
@@ -608,8 +647,14 @@ function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
     } else {
       filtered = [...ranks, ...utilities];
     }
-    return { filteredItems: filtered, allItems: items };
-  }, [listQuery.data, filter, myInventory.data]);
+    return { filteredItems: filtered, allItems: items, derivedOwnedIds };
+  }, [
+    listQuery.data,
+    filter,
+    myInventory.data,
+    me.data?.user?.earnedLifetime,
+    me.data?.user?.rank,
+  ]);
 
   if (listQuery.isLoading) {
     return (
@@ -713,22 +758,21 @@ function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
       {filteredItems && filteredItems.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredItems.map((it) => {
-            const owned = myInventory.data?.some(
-              (ownedItem) => ownedItem.itemId === it.id
-            );
+            const owned = Boolean(derivedOwnedIds?.has(it.id));
             let rankNotHighEnough = false;
             if (it.category === "rank") {
               const requiredRankOrder = it.order - 1;
               if (requiredRankOrder > 0) {
-                const hasRequiredRank = myInventory.data?.some((ownedItem) => {
-                  const ownedRankDetails = allItems.find(
-                    (item) => item.sku === ownedItem.sku
-                  );
-                  return (
-                    ownedRankDetails &&
-                    ownedRankDetails.order === requiredRankOrder
-                  );
-                });
+                const hasRequiredRank = Boolean(
+                  // Derived ownership covers previous ranks
+                  derivedOwnedIds?.size &&
+                    Array.from(derivedOwnedIds).some((id) => {
+                      const item = allItems.find((x) => x.id === id);
+                      if (!item) return false;
+                      const ord = classifyItem(item).order ?? item.order ?? 0;
+                      return ord === requiredRankOrder;
+                    })
+                );
                 if (!hasRequiredRank) {
                   rankNotHighEnough = true;
                 }
