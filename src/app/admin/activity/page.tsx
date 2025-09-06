@@ -27,12 +27,22 @@ interface ActivityLogEntry {
   createdAt: string;
   message?: string;
   undone?: boolean;
+  // Enriched transactionHistory fields
+  itemId?: string;
+  itemName?: string;
+  purchaser?: string;
+  // Some documents from transactionHistory also include raw fields
+  from?: string;
+  to?: string;
 }
 
 export default function AdminActivityPage() {
   // Use tRPC hook for activity data
-  const { data: activityData, isLoading: loading } = useAdmin().getActivity(0, 50);
-  const items = (activityData?.items || [] as unknown) as ActivityLogEntry[];
+  const { data: activityData, isLoading: loading } = useAdmin().getActivity(
+    0,
+    50
+  );
+  const items = (activityData?.items || ([] as unknown)) as ActivityLogEntry[];
 
   return (
     <div
@@ -121,6 +131,17 @@ function ActionIcon({ action }: { action: string }) {
 
 function renderMessage(a: ActivityLogEntry) {
   if (a.message) return a.message;
+  // Marketplace purchases from consolidated transactionHistory
+  if ((a as any).type === "marketplace_purchase") {
+    const itemName = (a as any).itemName || (a.data as any)?.itemName || "item";
+    const buyer =
+      (a as any).purchaser || a.data?.from || (a as any).from || "someone";
+    return (
+      <span className="font-mono">
+        <strong>{buyer}</strong> purchased <strong>{itemName}</strong>
+      </span>
+    );
+  }
   if (a.action === "credit_transfer" && a.data) {
     const d = a.data;
     return (

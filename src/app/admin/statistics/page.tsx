@@ -26,31 +26,35 @@ export default function AdminStatisticsPage() {
 
   // Knowledge/Peer graphs temporal controls: N days from the very first transaction
   const bounds = trpc.admin.stats.timeBounds.useQuery();
-  const earliest = bounds.data?.earliest
-    ? new Date(bounds.data.earliest)
-    : undefined;
-  const latest = bounds.data?.latest ? new Date(bounds.data.latest) : undefined;
+  const earliestDate = useMemo(() => {
+    const e = bounds.data?.earliest;
+    return e ? new Date(e) : undefined;
+  }, [bounds.data?.earliest]);
+  const latestDate = useMemo(() => {
+    const l = bounds.data?.latest;
+    return l ? new Date(l) : undefined;
+  }, [bounds.data?.latest]);
   const totalDays = useMemo(() => {
-    if (!earliest || !latest) return 365;
+    if (!earliestDate || !latestDate) return 365;
     const diff =
       Math.ceil(
-        (latest.getTime() - earliest.getTime()) / (1000 * 60 * 60 * 24)
+        (latestDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)
       ) + 1;
     return Math.max(1, diff);
-  }, [earliest, latest]);
+  }, [earliestDate, latestDate]);
   const [daysFromStart, setDaysFromStart] = useState<number>(30);
   const windowToDate = useMemo(() => {
-    if (!earliest) return undefined;
-    const d = new Date(earliest);
+    if (!earliestDate) return undefined;
+    const d = new Date(earliestDate);
     d.setDate(d.getDate() + Math.min(daysFromStart - 1, totalDays - 1));
     return d;
-  }, [earliest, daysFromStart, totalDays]);
+  }, [earliestDate, daysFromStart, totalDays]);
   const peerGraph = trpc.admin.stats.peerGraph.useQuery({
-    from: earliest,
+    from: earliestDate,
     to: windowToDate,
   });
   const knowledge = trpc.admin.stats.knowledgeGraph.useQuery({
-    from: earliest,
+    from: earliestDate,
     to: windowToDate,
   });
 
@@ -274,8 +278,8 @@ export default function AdminStatisticsPage() {
                   </div>
                 </div>
                 <div className="mt-1 text-[10px] opacity-70 font-mono">
-                  {earliest && windowToDate
-                    ? `${earliest.toLocaleDateString()} → ${windowToDate.toLocaleDateString()}`
+                  {earliestDate && windowToDate
+                    ? `${earliestDate.toLocaleDateString()} → ${windowToDate.toLocaleDateString()}`
                     : "Loading bounds…"}
                 </div>
               </div>

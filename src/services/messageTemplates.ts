@@ -347,12 +347,28 @@ const adminGiveTemplates: TemplateEntry[] = [
 export function buildUserTransferMessage(ctx: UserTransferContext): string {
   const reason = normalizeReason(ctx.reason);
   const picked = weightedPick(userTransferTemplates);
-  return finalize(picked.template, {
+  // Build base message
+  let msg = finalize(picked.template, {
     from: ctx.from,
     to: ctx.to,
     credits: ctx.credits,
     reason,
   });
+  // Highlight sender and recipient in red and bold
+  msg = msg.replace(
+    new RegExp(ctx.from, "g"),
+    `<span class="text-red-500 font-bold">${ctx.from}</span>`
+  );
+  msg = msg.replace(
+    new RegExp(ctx.to, "g"),
+    `<span class="text-red-500 font-bold">${ctx.to}</span>`
+  );
+  // Bold the credit amount
+  msg = msg.replace(
+    new RegExp(`${ctx.credits}`, "g"),
+    `<span class="font-bold">${ctx.credits}</span>`
+  );
+  return msg;
 }
 
 export function buildAdminGiveMessage(ctx: AdminAdjustmentContext): string {

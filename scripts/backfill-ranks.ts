@@ -10,9 +10,8 @@ async function main() {
   while (await cursor.hasNext()) {
     const u = await cursor.next();
     if (!u) continue;
-    const credits = typeof u.credits === "number" ? u.credits : 20;
     const earnedLifetime =
-      typeof u.earnedLifetime === "number" ? u.earnedLifetime : credits;
+      typeof u.earnedLifetime === "number" ? u.earnedLifetime : 20;
     const rank =
       typeof u.rank === "string" ? u.rank : getVanityRank(earnedLifetime);
     const res = await users.updateOne(

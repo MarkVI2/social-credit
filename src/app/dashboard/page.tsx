@@ -8,7 +8,6 @@ import { IconLogout } from "@tabler/icons-react";
 import { useUsers } from "@/hooks/useUsers";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
-//
 
 // Transaction item shape (user + global recent logs)
 interface UserTransaction {
@@ -27,7 +26,7 @@ export default function DashboardPage() {
   const [showSettings, setShowSettings] = useState(false);
 
   // Use tRPC hooks
-  const { user, balance, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, refreshAuth } = useAuth();
   const { allUsers: users } = useUsers();
   const { transactionHistory, getGlobalHistory, transfer, isTransferring } =
     useTransactions();
@@ -95,6 +94,15 @@ export default function DashboardPage() {
   const isValidUser = !!matchedUser;
   const isValidReason = reason.trim().length > 0;
   const canSubmit = isValidUser && isValidReason;
+  // Rate limit: only one send every 2 minutes
+  const lastMyTx = recent[0];
+  const lastTxTime = lastMyTx ? new Date(lastMyTx.timestamp).getTime() : 0;
+  const timeSinceLast = Date.now() - lastTxTime;
+  const rateLimitMs = 2 * 60 * 1000;
+  const isRateLimited = Boolean(lastMyTx) && timeSinceLast < rateLimitMs;
+  const retrySeconds = isRateLimited
+    ? Math.ceil((rateLimitMs - timeSinceLast) / 1000)
+    : 0;
 
   // Check authentication
   useEffect(() => {
@@ -114,6 +122,10 @@ export default function DashboardPage() {
     try {
       await transfer(target.username, reason);
       setReason("");
+      // Refresh auth/user to update local credits immediately
+      if (user) {
+        await refreshAuth(user);
+      }
     } catch (e) {
       console.error("[Send] Transfer error", e);
     }
@@ -212,7 +224,7 @@ export default function DashboardPage() {
                             borderColor: "var(--foreground)",
                           }}
                         >
-                          Visit People’s Marketplace
+                          Visit People's Marketplace
                         </button>
                       </div>
                     </div>
@@ -229,6 +241,38 @@ export default function DashboardPage() {
                     >
                       <IconLogout size={24} stroke={2} />
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Balance */}
+            <div className="w-full">
+              <div
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card"
+                style={{
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  borderColor: "var(--foreground)",
+                }}
+              >
+                <div className="flex flex-col items-center text-center">
+                  <h3
+                    className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-2"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    Balance
+                  </h3>
+                  <div className="flex flex-col items-center gap-1">
+                    <div
+                      className="font-heading font-extrabold tracking-wider text-4xl sm:text-5xl md:text-6xl"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      {Math.trunc((user.credits as number) ?? 0)}
+                    </div>
+                    <div className="font-mono text-[11px] sm:text-xs opacity-80">
+                      credits
+                    </div>
                   </div>
                 </div>
               </div>
@@ -357,8 +401,8 @@ export default function DashboardPage() {
                 </button> */}
                 <button
                   onClick={handleSend}
-                  disabled={!canSubmit || isTransferring}
-                  aria-disabled={!canSubmit || isTransferring}
+                  disabled={!canSubmit || isTransferring || isRateLimited}
+                  aria-disabled={!canSubmit || isTransferring || isRateLimited}
                   className="flex-1 text-white py-2 sm:py-2.5 px-3 sm:px-3.5 rounded-none font-bold border-4 hover:opacity-90 btn-3d disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none"
                   style={{
                     background: "var(--accent)",
@@ -372,6 +416,12 @@ export default function DashboardPage() {
                 <p className="mt-1.5 font-mono text-[11px] opacity-80">
                   Hint: select a valid user and enter a reason. Each send
                   transfers 2 credits.
+                </p>
+              )}
+              {isRateLimited && (
+                <p className="mt-1.5 font-mono text-[11px] opacity-80">
+                  Rate limit exceeded. Try again in {retrySeconds} second
+                  {retrySeconds > 1 ? "s" : ""}.
                 </p>
               )}
               {showSettings && (
@@ -419,21 +469,23 @@ export default function DashboardPage() {
                           </div>
                           <div className="text-xs sm:text-sm font-mono mt-1 leading-relaxed break-words">
                             {t.message ? (
-                              <>{t.message}</>
+                              <span
+                                dangerouslySetInnerHTML={{ __html: t.message }}
+                              />
                             ) : (
                               <>
-                                <span className="font-semibold">
+                                <span className="text-red-500 font-bold">
                                   {resolveName(t.from)}
                                 </span>{" "}
                                 has transfered{" "}
                                 <span
-                                  className="font-semibold"
+                                  className="font-bold"
                                   style={{ color: "var(--accent)" }}
                                 >
                                   {t.amount}
                                 </span>{" "}
                                 to{" "}
-                                <span className="font-semibold">
+                                <span className="text-red-500 font-bold">
                                   {resolveName(t.to)}
                                 </span>
                                 {t.reason ? (

@@ -232,8 +232,11 @@ export const auctionRouter = createTRPCRouter({
       const from = winner.username;
 
       // Perform transfer
-      // Deduct from winner
-      await users.updateOne({ _id: winnerId }, { $inc: { credits: -amount } });
+      // Deduct from winner and count as marketplace/auction spend
+      await users.updateOne(
+        { _id: winnerId },
+        { $inc: { credits: -amount, spentLifetime: amount } }
+      );
       // Credit to recipient
       if (to === "classBank") {
         await system.updateOne(

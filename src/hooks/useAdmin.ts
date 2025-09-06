@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { trpc } from '@/trpc/client';
-import { useAuth } from './useAuth';
+import { trpc } from "@/trpc/client";
+import { useAuth } from "./useAuth";
 
 export function useAdmin() {
   const { isAdmin } = useAuth();
@@ -18,7 +18,11 @@ export function useAdmin() {
   };
 
   // Admin users management
-  const getUsers = (query: string = '', page: number = 1, limit: number = 20) => {
+  const getUsers = (
+    query: string = "",
+    page: number = 1,
+    limit: number = 20
+  ) => {
     return trpc.admin.users.getUsers.useQuery(
       { query, page, limit },
       {
@@ -48,14 +52,16 @@ export function useAdmin() {
   });
 
   // Bulk operations
-  const bulkUpdateCredits = async (updates: { 
-    targetUserId: string; 
-    amount: number;
-    sourceAccount: 'admin' | 'classBank';
-    reason: string;
-  }[]) => {
+  const bulkUpdateCredits = async (
+    updates: {
+      targetUserId: string;
+      amount: number;
+      sourceAccount: "admin" | "classBank";
+      reason: string;
+    }[]
+  ) => {
     const results = await Promise.allSettled(
-      updates.map(update => 
+      updates.map((update) =>
         updateCredits.mutateAsync({
           targetUserId: update.targetUserId,
           amount: update.amount,
@@ -64,7 +70,7 @@ export function useAdmin() {
         })
       )
     );
-    
+
     return results;
   };
 
@@ -72,18 +78,28 @@ export function useAdmin() {
     // Queries
     getActivity,
     getUsers,
-    
+
     // Mutations
     updateCredits,
     initClassBank,
     bulkUpdateCredits,
-    
+    // Destructive user actions
+    freezeUser: trpc.admin.users.setFreeze.useMutation({
+      onSuccess: () => trpcUtils.admin.users.getUsers.invalidate(),
+    }),
+    timeoutUser: trpc.admin.users.setTimeout.useMutation({
+      onSuccess: () => trpcUtils.admin.users.getUsers.invalidate(),
+    }),
+    deleteUser: trpc.admin.users.deleteUser.useMutation({
+      onSuccess: () => trpcUtils.admin.users.getUsers.invalidate(),
+    }),
+
     // States
     isUpdatingCredits: updateCredits.isPending,
     isInitializingBank: initClassBank.isPending,
     updateCreditsError: updateCredits.error,
     initBankError: initClassBank.error,
-    
+
     // Auth
     isAdmin,
   };

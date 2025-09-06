@@ -156,8 +156,9 @@ export class UserService {
       const needsRank =
         typeof (userWithoutPassword as { rank?: string }).rank !== "string";
       if (needsLifetime || needsRank) {
+        // Default lifetime is the initial grant (20); do NOT infer from current credits
         const earnedLifetime = needsLifetime
-          ? (userWithoutPassword as { credits?: number }).credits ?? 20
+          ? 20
           : (userWithoutPassword as { earnedLifetime?: number })
               .earnedLifetime!;
         const rank = getVanityRank(earnedLifetime);
