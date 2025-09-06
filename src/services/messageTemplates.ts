@@ -34,6 +34,16 @@ function normalizeReason(reason?: string) {
   return trimmed.length ? trimmed : "no declared reason";
 }
 
+// Simple HTML escape to prevent XSS when injecting into templates
+function escapeHtml(input: string) {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function finalize(template: string, mapping: Record<string, string | number>) {
   let out = template;
   for (const [k, v] of Object.entries(mapping)) {
@@ -345,49 +355,55 @@ const adminGiveTemplates: TemplateEntry[] = [
 ];
 
 export function buildUserTransferMessage(ctx: UserTransferContext): string {
-  const reason = normalizeReason(ctx.reason);
+  const reason = escapeHtml(normalizeReason(ctx.reason));
+  const fromEsc = escapeHtml(ctx.from);
+  const toEsc = escapeHtml(ctx.to);
   const picked = weightedPick(userTransferTemplates);
   // Build base message
   let msg = finalize(picked.template, {
-    from: ctx.from,
-    to: ctx.to,
+    from: fromEsc,
+    to: toEsc,
     credits: ctx.credits,
     reason,
   });
   // Highlight sender and recipient in red and bold
   msg = msg.replace(
-    new RegExp(ctx.from, "g"),
-    `<span class="text-red-500 font-bold">${ctx.from}</span>`
+    new RegExp(fromEsc.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
+    `<span class="text-red-500 font-bold">${fromEsc}</span>`
   );
   msg = msg.replace(
-    new RegExp(ctx.to, "g"),
-    `<span class="text-red-500 font-bold">${ctx.to}</span>`
+    new RegExp(toEsc.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
+    `<span class="text-red-500 font-bold">${toEsc}</span>`
   );
-  // Bold the credit amount
+  // Bold only the standalone credit amount occurrence (avoid touching digits in usernames like '23AI69')
   msg = msg.replace(
-    new RegExp(`${ctx.credits}`, "g"),
+    new RegExp(`\\b${ctx.credits}\\b`),
     `<span class="font-bold">${ctx.credits}</span>`
   );
   return msg;
 }
 
 export function buildAdminGiveMessage(ctx: AdminAdjustmentContext): string {
-  const reason = normalizeReason(ctx.reason);
+  const reason = escapeHtml(normalizeReason(ctx.reason));
+  const admin = escapeHtml(ctx.admin);
+  const user = escapeHtml(ctx.user);
   const picked = weightedPick(adminGiveTemplates);
   return finalize(picked.template, {
-    admin: ctx.admin,
-    user: ctx.user,
+    admin,
+    user,
     credits: ctx.credits,
     reason,
   });
 }
 
 export function buildAdminTakeMessage(ctx: AdminAdjustmentContext): string {
-  const reason = normalizeReason(ctx.reason);
+  const reason = escapeHtml(normalizeReason(ctx.reason));
+  const admin = escapeHtml(ctx.admin);
+  const user = escapeHtml(ctx.user);
   const picked = weightedPick(adminTakeTemplates);
   return finalize(picked.template, {
-    admin: ctx.admin,
-    user: ctx.user,
+    admin,
+    user,
     credits: ctx.credits,
     reason,
   });

@@ -130,7 +130,13 @@ function ActionIcon({ action }: { action: string }) {
 }
 
 function renderMessage(a: ActivityLogEntry) {
-  if (a.message) return a.message;
+  if (a.message)
+    return (
+      <span
+        className="font-mono"
+        dangerouslySetInnerHTML={{ __html: a.message }}
+      />
+    );
   // Marketplace purchases from consolidated transactionHistory
   if ((a as any).type === "marketplace_purchase") {
     const itemName = (a as any).itemName || (a.data as any)?.itemName || "item";
