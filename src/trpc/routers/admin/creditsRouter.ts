@@ -70,8 +70,7 @@ export const creditsRouter = createTRPCRouter({
               if (dec.matchedCount !== 1) {
                 throw new Error("Insufficient admin balance");
               }
-              const newLifetime =
-                (target.earnedLifetime ?? target.credits ?? 0) + amount;
+              const newLifetime = (target.earnedLifetime ?? 20) + amount;
               const newRank = getVanityRank(newLifetime);
               const inc = await users.updateOne(
                 { _id: target._id },
@@ -121,8 +120,7 @@ export const creditsRouter = createTRPCRouter({
               if (dec.matchedCount !== 1) {
                 throw new Error("Insufficient class bank balance");
               }
-              const newLifetime =
-                (target.earnedLifetime ?? target.credits ?? 0) + amount;
+              const newLifetime = (target.earnedLifetime ?? 20) + amount;
               const newRank = getVanityRank(newLifetime);
               const inc = await users.updateOne(
                 { _id: target._id },
@@ -247,8 +245,7 @@ export const creditsRouter = createTRPCRouter({
         const txInserts: any[] = [];
         const now = new Date();
         await cursor.forEach((u) => {
-          const newLifetime =
-            (u.earnedLifetime ?? u.credits ?? 0) + input.amount;
+          const newLifetime = (u.earnedLifetime ?? 20) + input.amount;
           const newRank = getVanityRank(newLifetime);
           updates.push(
             users.updateOne(
@@ -302,8 +299,7 @@ export const creditsRouter = createTRPCRouter({
         _id: new ObjectId(input.targetUserId),
       });
       if (!target) throw new Error("Target user not found");
-      const newLifetime =
-        (target.earnedLifetime ?? target.credits ?? 0) + input.amount;
+      const newLifetime = (target.earnedLifetime ?? 20) + input.amount;
       const newRank = getVanityRank(newLifetime);
       await users.updateOne(
         { _id: target._id! },

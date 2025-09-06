@@ -67,14 +67,14 @@ export const transactionsRouter = createTRPCRouter({
       }
       const amount = 2; // fixed amount per requirements
 
-      // Debit sender (only if sufficient balance) and track spent lifetime
+      // Debit sender (only if sufficient balance). Do NOT count peer transfers as 'spentLifetime'.
       const fromQuery = ctx.user.email
         ? { email: ctx.user.email }
         : { username: ctx.user.username };
       const dec = await coll.updateOne(
         { ...fromQuery, credits: { $gte: amount } },
         {
-          $inc: { credits: -amount, spentLifetime: amount },
+          $inc: { credits: -amount },
           $set: { updatedAt: new Date() },
         }
       );
@@ -85,8 +85,8 @@ export const transactionsRouter = createTRPCRouter({
 
       // Credit recipient + increment lifetime and update rank
       const toDoc = await coll.findOne(toQuery);
-      const newLifetime =
-        (toDoc?.earnedLifetime ?? toDoc?.credits ?? 0) + amount;
+      // Never fall back to current credits for lifetime; default is initial grant (20)
+      const newLifetime = (toDoc?.earnedLifetime ?? 20) + amount;
       const newRank = getVanityRank(newLifetime);
       // Credit recipient and track received lifetime
       const inc = await coll.updateOne(toQuery, {

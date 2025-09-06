@@ -5,6 +5,7 @@ import { MarketplaceItemSchema } from "@/models/marketplace";
 import { ObjectId } from "mongodb";
 import { protectedProcedure } from "../init";
 import { broadcastLeaderboardUpdate } from "./leaderboardRouter";
+import { logTransaction } from "@/services/transactionService";
 import { classifyItem } from "@/lib/marketplaceUtils";
 
 export const marketplaceRouter = createTRPCRouter({
@@ -168,7 +169,10 @@ export const marketplaceRouter = createTRPCRouter({
       // Deduct and add to inventory atomically-ish; then credit class bank
       await users.updateOne(
         { _id: ctx.user._id },
-        { $inc: { credits: -price }, $set: { updatedAt: new Date() } }
+        {
+          $inc: { credits: -price, spentLifetime: price },
+          $set: { updatedAt: new Date() },
+        }
       );
       await inventory.insertOne({
         _id: new ObjectId(),
@@ -185,20 +189,17 @@ export const marketplaceRouter = createTRPCRouter({
         { upsert: true }
       );
 
-      // Update live leaderboard since user credits changed
+      // Update live leaderboard since user credits changed and log transaction (with anonymity applied if active)
       try {
-        // Log as a marketplace purchase for downstream analytics
         const from = me.username || me.email || "";
-        await db.collection("transactionHistory").insertOne({
+        await logTransaction({
           from,
           to: "classBank",
           amount: price,
           reason: `Purchase: ${item.name}`,
           timestamp: new Date(),
           type: "marketplace_purchase",
-          itemId: item.itemId,
-          itemName: item.name,
-          purchaser: from,
+          // message will be built inside logTransaction
         });
         broadcastLeaderboardUpdate();
       } catch {}
