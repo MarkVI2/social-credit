@@ -291,9 +291,12 @@ function PossessionsList() {
                 {(() => {
                   const isVeil =
                     it?.sku === "ANONYMITY_TOKEN_24H" ||
-                    String(it?.name || "").toLowerCase().includes("veil");
+                    String(it?.name || "")
+                      .toLowerCase()
+                      .includes("veil");
                   const acquired = new Date(it.acquiredAt).getTime();
-                  const active = isVeil && Date.now() - acquired <= 24 * 60 * 60 * 1000;
+                  const active =
+                    isVeil && Date.now() - acquired <= 24 * 60 * 60 * 1000;
                   return active ? (
                     <span
                       className="text-[10px] font-bold px-2 py-0.5 border-2"
