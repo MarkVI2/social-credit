@@ -14,34 +14,48 @@ export const auctionRouter = createTRPCRouter({
   // Admin-only: create a new auction
   create: adminProcedure
     .input(
-      AuctionSchema.pick({
-        itemName: true,
-        itemDescription: true,
-        itemImage: true,
-        auctionType: true,
-        startTime: true,
-        endTime: true,
-        startingBid: true,
-        startingPrice: true,
-        reservePrice: true,
-        decrementAmount: true,
-        decrementInterval: true,
-      }).partial({
-        itemDescription: true,
-        itemImage: true,
-        startingBid: true,
-        startingPrice: true,
-        reservePrice: true,
-        decrementAmount: true,
-        decrementInterval: true,
+      z.object({
+        itemName: z.string().min(3),
+        itemDescription: z.string().optional(),
+        itemImage: z.string().url().optional(),
+        auctionType: z.enum(["english", "dutch"]),
+        startTime: z.date(),
+        endTime: z.date(),
+        startingBid: z.number().positive().optional(),
+        startingPrice: z.number().positive().optional(),
+        reservePrice: z.number().positive().optional(),
+        decrementAmount: z.number().positive().optional(),
+        decrementInterval: z.number().positive().optional(),
+        payoutToClassBank: z.boolean().default(true),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Implementation pending
-      return {
-        success: true,
-        message: "Auction created (implementation pending).",
-      };
+      const db = await getDatabase();
+      const auctions = db.collection<Auction>("auctions");
+      const doc: Auction = {
+        _id: new ObjectId(),
+        itemName: input.itemName,
+        itemDescription: input.itemDescription,
+        itemImage: input.itemImage,
+        sellerId: ctx.user._id!,
+        payoutToClassBank: input.payoutToClassBank,
+        auctionType: input.auctionType,
+        status: "active",
+        startTime: input.startTime,
+        endTime: input.endTime,
+        startingBid: input.startingBid,
+        currentBid: undefined,
+        highestBidderId: undefined,
+        bids: [],
+        startingPrice: input.startingPrice,
+        reservePrice: input.reservePrice,
+        decrementAmount: input.decrementAmount,
+        decrementInterval: input.decrementInterval,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any;
+      await auctions.insertOne(doc as any);
+      return { success: true, id: doc._id.toString() };
     }),
 
   // List auctions with optional status filter and cursor pagination
@@ -208,18 +222,21 @@ export const auctionRouter = createTRPCRouter({
 
       // Determine recipients
       let to: string;
-      if (ctx.user.role === "admin") {
-        to = input.useClassBank
-          ? "classBank"
-          : ctx.user.username || ctx.user.email;
+      const payToClassBank = input.useClassBank || auc.payoutToClassBank;
+      if (payToClassBank) {
+        to = "classBank";
       } else {
-        to = seller?.username || "unknown";
+        to =
+          seller?.username || ctx.user.username || ctx.user.email || "unknown";
       }
       const from = winner.username;
 
       // Perform transfer
-      // Deduct from winner
-      await users.updateOne({ _id: winnerId }, { $inc: { credits: -amount } });
+      // Deduct from winner and count as marketplace/auction spend
+      await users.updateOne(
+        { _id: winnerId },
+        { $inc: { credits: -amount, spentLifetime: amount } }
+      );
       // Credit to recipient
       if (to === "classBank") {
         await system.updateOne(
@@ -243,6 +260,7 @@ export const auctionRouter = createTRPCRouter({
         amount,
         reason: `Auction settlement for ${input.auctionId}`,
         timestamp: new Date(),
+        type: "auction_settlement",
       });
       // Update auction status to completed
       await auctions.updateOne(

@@ -27,6 +27,21 @@ export const transactionsRouter = createTRPCRouter({
       const db = await getDatabase();
       const coll = db.collection("userinformation");
 
+      // Enforce account status (freeze/timeout)
+      const meDoc = await coll.findOne({ _id: ctx.user._id });
+      if (!meDoc) throw new Error("User not found");
+      if (meDoc.isFrozen) {
+        throw new Error("Your account is frozen by an administrator.");
+      }
+      if (
+        meDoc.timeoutUntil &&
+        new Date(meDoc.timeoutUntil).getTime() > Date.now()
+      ) {
+        throw new Error(
+          "You are on timeout and cannot send credits right now."
+        );
+      }
+
       const toQuery = toId.includes("@")
         ? { email: toId.toLowerCase() }
         : { username: toId };
@@ -36,16 +51,32 @@ export const transactionsRouter = createTRPCRouter({
         throw new Error("Recipient not found");
       }
 
+      // Server-side rate-limit: only one transaction every 2 minutes
+      const txCol = db.collection("transactionHistory");
+      const last = await txCol.findOne(
+        { from: fromId },
+        { sort: { timestamp: -1 }, projection: { timestamp: 1 } }
+      );
+      if (
+        last?.timestamp instanceof Date &&
+        Date.now() - last.timestamp.getTime() < 2 * 60 * 1000
+      ) {
+        throw new Error(
+          "Rate limit exceeded. Only one transaction every 2 minutes."
+        );
+      }
       const amount = 2; // fixed amount per requirements
 
-      // Debit sender (only if sufficient balance)
+      // Debit sender (only if sufficient balance). Do NOT count peer transfers as 'spentLifetime'.
       const fromQuery = ctx.user.email
         ? { email: ctx.user.email }
         : { username: ctx.user.username };
-
       const dec = await coll.updateOne(
         { ...fromQuery, credits: { $gte: amount } },
-        { $inc: { credits: -amount }, $set: { updatedAt: new Date() } }
+        {
+          $inc: { credits: -amount },
+          $set: { updatedAt: new Date() },
+        }
       );
 
       if (dec.matchedCount !== 1) {
@@ -54,11 +85,12 @@ export const transactionsRouter = createTRPCRouter({
 
       // Credit recipient + increment lifetime and update rank
       const toDoc = await coll.findOne(toQuery);
-      const newLifetime =
-        (toDoc?.earnedLifetime ?? toDoc?.credits ?? 0) + amount;
+      // Never fall back to current credits for lifetime; default is initial grant (20)
+      const newLifetime = (toDoc?.earnedLifetime ?? 20) + amount;
       const newRank = getVanityRank(newLifetime);
+      // Credit recipient and track received lifetime
       const inc = await coll.updateOne(toQuery, {
-        $inc: { credits: amount },
+        $inc: { credits: amount, receivedLifetime: amount },
         $set: {
           updatedAt: new Date(),
           earnedLifetime: newLifetime,

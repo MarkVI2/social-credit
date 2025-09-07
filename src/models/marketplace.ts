@@ -9,6 +9,9 @@ export const MarketplaceItemSchema = z.object({
   description: z.string().optional(),
   price: z.number().positive(),
   imageUrl: z.string().url().optional(),
+  // Classification
+  category: z.enum(["rank", "utility"]).optional(),
+  order: z.number().int().positive().optional(),
   createdAt: z.date().default(() => new Date()),
   updatedAt: z.date().default(() => new Date()),
 });

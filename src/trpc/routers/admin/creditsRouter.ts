@@ -70,8 +70,7 @@ export const creditsRouter = createTRPCRouter({
               if (dec.matchedCount !== 1) {
                 throw new Error("Insufficient admin balance");
               }
-              const newLifetime =
-                (target.earnedLifetime ?? target.credits ?? 0) + amount;
+              const newLifetime = (target.earnedLifetime ?? 20) + amount;
               const newRank = getVanityRank(newLifetime);
               const inc = await users.updateOne(
                 { _id: target._id },
@@ -110,7 +109,7 @@ export const creditsRouter = createTRPCRouter({
             }
           } else {
             // classBank source
-            const classBankQuery = { _id: "classBank" };
+            const classBankQuery = { accountType: "classBank" } as const;
             if (amount > 0) {
               // deduct from class bank, credit to user
               const dec = await system.updateOne(
@@ -121,8 +120,7 @@ export const creditsRouter = createTRPCRouter({
               if (dec.matchedCount !== 1) {
                 throw new Error("Insufficient class bank balance");
               }
-              const newLifetime =
-                (target.earnedLifetime ?? target.credits ?? 0) + amount;
+              const newLifetime = (target.earnedLifetime ?? 20) + amount;
               const newRank = getVanityRank(newLifetime);
               const inc = await users.updateOne(
                 { _id: target._id },
@@ -181,7 +179,9 @@ export const creditsRouter = createTRPCRouter({
                 credits: Math.abs(amount),
               });
 
-        await logTransaction({
+        await db.collection("transactionHistory").insertOne({
+          type: "admin",
+          action: amount > 0 ? "mint" : "burn",
           from:
             amount > 0
               ? sourceAccount === "admin"
@@ -197,18 +197,6 @@ export const creditsRouter = createTRPCRouter({
           amount: Math.abs(amount),
           reason,
           timestamp: new Date(),
-        });
-
-        await recordActivity({
-          type: "admin",
-          action: amount > 0 ? "mint" : "burn",
-          data: {
-            admin: me.username || me.email,
-            user: target.username || target.email,
-            amount: Math.abs(amount),
-            sourceAccount,
-            reason,
-          },
           message,
         });
 
@@ -224,6 +212,132 @@ export const creditsRouter = createTRPCRouter({
       } finally {
         await session.endSession();
       }
+    }),
+
+  // Mint new supply and distribute to a user or to all users equally
+  mintSupply: adminProcedure
+    .input(
+      z.object({
+        amount: z.number().positive("Amount must be positive"),
+        reason: z.string().min(1, "Reason is required"),
+        targetUserId: z.string().optional(), // if omitted and distributeToAll=true, give to all users
+        distributeToAll: z.boolean().default(false),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDatabase();
+      const users = db.collection<User>("userinformation");
+
+      if (input.distributeToAll) {
+        const cursor = users.find(
+          {},
+          {
+            projection: {
+              _id: 1,
+              username: 1,
+              email: 1,
+              credits: 1,
+              earnedLifetime: 1,
+            },
+          }
+        );
+        const updates: Promise<any>[] = [];
+        const txInserts: any[] = [];
+        const now = new Date();
+        await cursor.forEach((u) => {
+          const newLifetime = (u.earnedLifetime ?? 20) + input.amount;
+          const newRank = getVanityRank(newLifetime);
+          updates.push(
+            users.updateOne(
+              { _id: u._id! },
+              {
+                $inc: { credits: input.amount },
+                $set: {
+                  updatedAt: now,
+                  earnedLifetime: newLifetime,
+                  rank: newRank,
+                },
+              }
+            )
+          );
+          txInserts.push({
+            from: "mint",
+            to: u.username || u.email,
+            amount: input.amount,
+            reason: input.reason,
+            timestamp: now,
+            type: "mint_supply",
+          });
+        });
+        await Promise.all(updates);
+        if (txInserts.length)
+          await db.collection("transactionHistory").insertMany(txInserts);
+        await db.collection("transactionHistory").insertOne({
+          type: "admin",
+          action: "mint",
+          from: "mint",
+          to: "all",
+          amount: input.amount,
+          reason: input.reason,
+          timestamp: now,
+          message: `${ctx.user.username || ctx.user.email} minted ${
+            input.amount
+          } to all users`,
+        });
+        broadcastLeaderboardUpdate();
+        return {
+          success: true,
+          message: `Minted ${input.amount} to all users`,
+        };
+      }
+
+      if (!input.targetUserId)
+        throw new Error(
+          "targetUserId is required when not distributing to all"
+        );
+      const target = await users.findOne({
+        _id: new ObjectId(input.targetUserId),
+      });
+      if (!target) throw new Error("Target user not found");
+      const newLifetime = (target.earnedLifetime ?? 20) + input.amount;
+      const newRank = getVanityRank(newLifetime);
+      await users.updateOne(
+        { _id: target._id! },
+        {
+          $inc: { credits: input.amount },
+          $set: {
+            updatedAt: new Date(),
+            earnedLifetime: newLifetime,
+            rank: newRank,
+          },
+        }
+      );
+      await logTransaction({
+        from: "mint",
+        to: target.username || target.email || "",
+        amount: input.amount,
+        reason: input.reason,
+        timestamp: new Date(),
+        type: "mint_supply",
+      });
+      await recordActivity({
+        type: "admin",
+        action: "mint",
+        data: {
+          admin: ctx.user.username || ctx.user.email,
+          user: target.username || target.email,
+          amount: input.amount,
+          reason: input.reason,
+        },
+        message: `${ctx.user.username || ctx.user.email} minted ${
+          input.amount
+        } to ${target.username || target.email}`,
+      });
+      broadcastLeaderboardUpdate();
+      return {
+        success: true,
+        message: `Minted ${input.amount} to ${target.username || target.email}`,
+      };
     }),
 
   // Get system account balances (admin only)

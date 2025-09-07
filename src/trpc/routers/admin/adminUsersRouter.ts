@@ -1,14 +1,14 @@
-import { z } from 'zod';
-import { adminProcedure, createTRPCRouter } from '../../init';
-import { getDatabase } from '@/lib/mongodb';
-import type { User } from '@/types/user';
+import { z } from "zod";
+import { adminProcedure, createTRPCRouter } from "../../init";
+import { getDatabase } from "@/lib/mongodb";
+import type { User } from "@/types/user";
 
 export const adminUsersRouter = createTRPCRouter({
   // Get all users with pagination and search (admin only)
   getUsers: adminProcedure
     .input(
       z.object({
-        query: z.string().optional().default(''),
+        query: z.string().optional().default(""),
         page: z.number().min(1).default(1),
         limit: z.number().min(1).max(100).default(20),
       })
@@ -19,13 +19,13 @@ export const adminUsersRouter = createTRPCRouter({
         const skip = (page - 1) * limit;
 
         const db = await getDatabase();
-        const coll = db.collection<User>('userinformation');
+        const coll = db.collection<User>("userinformation");
 
         const filter = query.trim()
           ? {
               $or: [
-                { username: { $regex: query, $options: 'i' } },
-                { email: { $regex: query, $options: 'i' } },
+                { username: { $regex: query, $options: "i" } },
+                { email: { $regex: query, $options: "i" } },
               ],
             }
           : {};
@@ -33,7 +33,15 @@ export const adminUsersRouter = createTRPCRouter({
         const [items, total] = await Promise.all([
           coll
             .find(filter, {
-              projection: { _id: 1, username: 1, email: 1, credits: 1, role: 1 },
+              projection: {
+                _id: 1,
+                username: 1,
+                email: 1,
+                credits: 1,
+                role: 1,
+                isFrozen: 1,
+                timeoutUntil: 1,
+              },
             })
             .skip(skip)
             .limit(limit)
@@ -43,8 +51,8 @@ export const adminUsersRouter = createTRPCRouter({
 
         return { success: true, items, total, page, limit };
       } catch (error) {
-        console.error('Admin users list error', error);
-        throw new Error('Internal server error');
+        console.error("Admin users list error", error);
+        throw new Error("Internal server error");
       }
     }),
 
@@ -52,33 +60,36 @@ export const adminUsersRouter = createTRPCRouter({
   updateUserRole: adminProcedure
     .input(
       z.object({
-        userId: z.string().min(1, 'User ID is required'),
-        role: z.enum(['user', 'admin']),
+        userId: z.string().min(1, "User ID is required"),
+        role: z.enum(["user", "admin"]),
       })
     )
     .mutation(async ({ input, ctx }) => {
       try {
-        const { ObjectId } = await import('mongodb');
+        const { ObjectId } = await import("mongodb");
         const db = await getDatabase();
-        const coll = db.collection<User>('userinformation');
+        const coll = db.collection<User>("userinformation");
 
         // Prevent admin from removing their own admin role
-        if (input.userId === ctx.user._id?.toString() && input.role !== 'admin') {
-          throw new Error('Cannot remove your own admin privileges');
+        if (
+          input.userId === ctx.user._id?.toString() &&
+          input.role !== "admin"
+        ) {
+          throw new Error("Cannot remove your own admin privileges");
         }
 
         const result = await coll.updateOne(
           { _id: new ObjectId(input.userId) },
-          { 
-            $set: { 
-              role: input.role, 
-              updatedAt: new Date() 
-            } 
+          {
+            $set: {
+              role: input.role,
+              updatedAt: new Date(),
+            },
           }
         );
 
         if (result.matchedCount === 0) {
-          throw new Error('User not found');
+          throw new Error("User not found");
         }
 
         return {
@@ -86,8 +97,10 @@ export const adminUsersRouter = createTRPCRouter({
           message: `User role updated to ${input.role}`,
         };
       } catch (error) {
-        console.error('Error updating user role:', error);
-        throw new Error(error instanceof Error ? error.message : 'Error updating user role');
+        console.error("Error updating user role:", error);
+        throw new Error(
+          error instanceof Error ? error.message : "Error updating user role"
+        );
       }
     }),
 
@@ -95,35 +108,117 @@ export const adminUsersRouter = createTRPCRouter({
   deleteUser: adminProcedure
     .input(
       z.object({
-        userId: z.string().min(1, 'User ID is required'),
+        userId: z.string().min(1, "User ID is required"),
       })
     )
     .mutation(async ({ input, ctx }) => {
       try {
-        const { ObjectId } = await import('mongodb');
-        
+        const { ObjectId } = await import("mongodb");
+
         // Prevent admin from deleting themselves
         if (input.userId === ctx.user._id?.toString()) {
-          throw new Error('Cannot delete your own account');
+          throw new Error("Cannot delete your own account");
         }
 
         const db = await getDatabase();
-        const coll = db.collection<User>('userinformation');
+        const coll = db.collection<User>("userinformation");
 
-        const result = await coll.deleteOne({ _id: new ObjectId(input.userId) });
+        const result = await coll.deleteOne({
+          _id: new ObjectId(input.userId),
+        });
 
         if (result.deletedCount === 0) {
-          throw new Error('User not found');
+          throw new Error("User not found");
         }
+
+        // Also soft-log deletion in activity/transactions feed for audit
+        await db.collection("transactionHistory").insertOne({
+          type: "admin",
+          action: "delete_user",
+          from: ctx.user.username || ctx.user.email,
+          to: input.userId,
+          amount: 0,
+          reason: "User deleted",
+          timestamp: new Date(),
+          message: `${ctx.user.username || ctx.user.email} deleted user ${
+            input.userId
+          }`,
+        });
 
         return {
           success: true,
-          message: 'User deleted successfully',
+          message: "User deleted successfully",
         };
       } catch (error) {
-        console.error('Error deleting user:', error);
-        throw new Error(error instanceof Error ? error.message : 'Error deleting user');
+        console.error("Error deleting user:", error);
+        throw new Error(
+          error instanceof Error ? error.message : "Error deleting user"
+        );
       }
+    }),
+
+  // Freeze or unfreeze a user account (admin only)
+  setFreeze: adminProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1, "User ID is required"),
+        frozen: z.boolean(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { ObjectId } = await import("mongodb");
+      const db = await getDatabase();
+      const coll = db.collection<User>("userinformation");
+      const res = await coll.updateOne(
+        { _id: new ObjectId(input.userId) },
+        { $set: { isFrozen: input.frozen, updatedAt: new Date() } }
+      );
+      if (res.matchedCount === 0) throw new Error("User not found");
+      await db.collection("transactionHistory").insertOne({
+        type: "admin",
+        action: input.frozen ? "freeze_account" : "unfreeze_account",
+        from: ctx.user.username || ctx.user.email,
+        to: input.userId,
+        amount: 0,
+        timestamp: new Date(),
+        message: `${ctx.user.username || ctx.user.email} ${
+          input.frozen ? "froze" : "unfroze"
+        } account ${input.userId}`,
+      });
+      return { success: true };
+    }),
+
+  // Put a user on timeout until a specific date/time (admin only)
+  setTimeout: adminProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1, "User ID is required"),
+        until: z.string().datetime().or(z.date()),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { ObjectId } = await import("mongodb");
+      const db = await getDatabase();
+      const coll = db.collection<User>("userinformation");
+      const until =
+        input.until instanceof Date ? input.until : new Date(input.until);
+      const res = await coll.updateOne(
+        { _id: new ObjectId(input.userId) },
+        { $set: { timeoutUntil: until, updatedAt: new Date() } }
+      );
+      if (res.matchedCount === 0) throw new Error("User not found");
+      await db.collection("transactionHistory").insertOne({
+        type: "admin",
+        action: "set_timeout",
+        from: ctx.user.username || ctx.user.email,
+        to: input.userId,
+        amount: 0,
+        timestamp: new Date(),
+        message: `${ctx.user.username || ctx.user.email} set timeout for ${
+          input.userId
+        } until ${until.toISOString()}`,
+      });
+      return { success: true };
     }),
 });
 

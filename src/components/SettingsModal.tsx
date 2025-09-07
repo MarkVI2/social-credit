@@ -9,9 +9,15 @@ interface Props {
 }
 
 export default function SettingsModal({ user, onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<"settings" | "possessions">(
-    "settings"
+  const [activeTab, setActiveTab] = useState<
+    "settings" | "possessions" | "statistics"
+  >("settings");
+  // Fetch user stats for statistics tab
+  const { data: statsData, isLoading: statsLoading } = trpc.user.getMe.useQuery(
+    undefined,
+    { enabled: !!user }
   );
+
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") return "light";
     // 1) Cookie overrides
@@ -132,6 +138,18 @@ export default function SettingsModal({ user, onClose }: Props) {
           >
             Possessions
           </button>
+          <button
+            onClick={() => setActiveTab("statistics")}
+            className="font-heading uppercase tracking-wider text-sm pb-1 border-b-4"
+            style={{
+              color: "var(--foreground)",
+              borderColor:
+                activeTab === "statistics" ? "var(--accent)" : "transparent",
+            }}
+            aria-current={activeTab === "statistics"}
+          >
+            Statistics
+          </button>
         </div>
 
         {/* Tab content */}
@@ -192,6 +210,32 @@ export default function SettingsModal({ user, onClose }: Props) {
               </div>
             </div>
           </div>
+        ) : activeTab === "statistics" ? (
+          <div className="mt-4 space-y-4">
+            {statsLoading ? (
+              <p className="font-mono text-sm">Loading statistics…</p>
+            ) : statsData?.user ? (
+              <ul className="space-y-2 font-mono text-sm">
+                <li>Credits Balance: {statsData.user.credits}</li>
+                <li>Lifetime Earned: {statsData.user.earnedLifetime}</li>
+                <li>Lifetime Spent: {statsData.user.spentLifetime}</li>
+                <li>Credits Received: {statsData.user.receivedLifetime}</li>
+                <li>Transactions Sent: {statsData.user.transactionsSent}</li>
+                <li>
+                  Transactions Received: {statsData.user.transactionsReceived}
+                </li>
+                <li>
+                  Course Credits:{" "}
+                  {(
+                    0.25 * (statsData.user.spentLifetime || 0) +
+                    0.75 * (statsData.user.earnedLifetime || 0)
+                  ).toFixed(2)}
+                </li>
+              </ul>
+            ) : (
+              <p className="font-mono text-sm">No statistics available.</p>
+            )}
+          </div>
         ) : (
           <div className="mt-4">
             <PossessionsList />
@@ -237,11 +281,35 @@ function PossessionsList() {
         >
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div
-                className="font-heading uppercase tracking-wider"
-                style={{ color: "var(--accent)" }}
-              >
-                {it.name}
+              <div className="flex items-center gap-2">
+                <div
+                  className="font-heading uppercase tracking-wider"
+                  style={{ color: "var(--accent)" }}
+                >
+                  {it.name}
+                </div>
+                {(() => {
+                  const isVeil =
+                    it?.sku === "ANONYMITY_TOKEN_24H" ||
+                    String(it?.name || "")
+                      .toLowerCase()
+                      .includes("veil");
+                  const acquired = new Date(it.acquiredAt).getTime();
+                  const active =
+                    isVeil && Date.now() - acquired <= 24 * 60 * 60 * 1000;
+                  return active ? (
+                    <span
+                      className="text-[10px] font-bold px-2 py-0.5 border-2"
+                      style={{
+                        background: "var(--accent)",
+                        color: "var(--accent-contrast)",
+                        borderColor: "var(--border)",
+                      }}
+                    >
+                      Active
+                    </span>
+                  ) : null;
+                })()}
               </div>
               <div className="font-mono text-xs opacity-80">
                 {it.description}

@@ -1,9 +1,9 @@
 {
   "name": "social-credit",
-  "version": "0.5.0",
+  "version": "0.6.1",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -13,7 +13,8 @@
     "test-mail": "tsx scripts/test-mail.ts",
     "seed-marketplace": "tsx scripts/seed-marketplace.ts",
     "backfill-ranks": "tsx scripts/backfill-ranks.ts",
-    "seed-classbank": "tsx scripts/seed-classbank.ts"
+    "backfill-stats": "tsx scripts/backfill-stats.ts",
+    "backfill-earned": "tsx scripts/backfill-earned-lifetime.ts"
   },
   "dependencies": {
     "@tabler/icons-react": "^3.34.1",
@@ -26,14 +27,15 @@
     "@vercel/speed-insights": "^1.2.0",
     "bcryptjs": "^3.0.2",
     "client-only": "^0.0.1",
-    "dotenv": "^17.2.1",
     "mongodb": "^6.18.0",
     "next": "15.4.6",
     "nodemailer": "^7.0.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "recharts": "^2.12.7",
     "server-only": "^0.0.1",
     "superjson": "^2.2.2",
+    "vis-network": "^9.1.9",
     "zod": "^4.0.17"
   },
   "devDependencies": {
@@ -43,9 +45,11 @@
     "@types/nodemailer": "^6.4.17",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.2.2",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
     "typescript": "^5"
   }

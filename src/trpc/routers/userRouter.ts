@@ -35,17 +35,32 @@ export const userRouter = createTRPCRouter({
 
   // Get current user's profile (protected)
   getMe: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDatabase();
+    const coll = db.collection<User>("userinformation");
+    const txCol = db.collection("transactionHistory");
+    const userDoc = await coll.findOne({ _id: ctx.user._id });
+    if (!userDoc) {
+      throw new Error("User not found");
+    }
+    // Compute transaction counts
+    const username = userDoc.username;
+    const countSent = await txCol.countDocuments({ from: username });
+    const countReceived = await txCol.countDocuments({ to: username });
     return {
       success: true,
       user: {
-        _id: ctx.user._id,
-        username: ctx.user.username,
-        email: ctx.user.email,
-        credits: ctx.user.credits || 0,
-        role: ctx.user.role,
-        rank: (ctx.user as any).rank,
-        earnedLifetime: (ctx.user as any).earnedLifetime,
-        createdAt: ctx.user.createdAt,
+        _id: userDoc._id,
+        username: userDoc.username,
+        email: userDoc.email,
+        credits: userDoc.credits || 0,
+        role: userDoc.role,
+        rank: userDoc.rank,
+        earnedLifetime: userDoc.earnedLifetime || 0,
+        spentLifetime: userDoc.spentLifetime || 0,
+        receivedLifetime: userDoc.receivedLifetime || 0,
+        transactionsSent: countSent,
+        transactionsReceived: countReceived,
+        createdAt: userDoc.createdAt,
       },
     };
   }),
@@ -102,7 +117,12 @@ export const userRouter = createTRPCRouter({
   updateMe: protectedProcedure
     .input(
       z.object({
-        username: z.string().min(1).optional(),
+        username: z
+          .string()
+          .min(3, "Username must be at least 3 characters")
+          .max(32, "Username too long")
+          .regex(/^[a-zA-Z0-9_]+$/, "Only letters, numbers, and _ allowed")
+          .optional(),
         email: z.string().email().optional(),
       })
     )
@@ -110,12 +130,23 @@ export const userRouter = createTRPCRouter({
       try {
         const db = await getDatabase();
         const coll = db.collection<User>("userinformation");
+        const inventory = db.collection("userInventory");
 
         const updateFields: Partial<User> & { updatedAt: Date } = {
           updatedAt: new Date(),
         };
 
         if (input.username) {
+          // Must own the USERNAME_CHANGE_TOKEN utility to rename
+          const token = await inventory.findOne({
+            userId: ctx.user._id,
+            sku: "USERNAME_CHANGE_TOKEN",
+          });
+          if (!token) {
+            throw new Error(
+              "You must purchase the 'Decree of Renaming' before changing your username."
+            );
+          }
           // Check if username is already taken
           const existingUser = await coll.findOne({
             username: input.username,
@@ -125,6 +156,8 @@ export const userRouter = createTRPCRouter({
             throw new Error("Username already taken");
           }
           updateFields.username = input.username;
+          // Consume the token after successful validation to prevent reuse
+          await inventory.deleteOne({ _id: token._id });
         }
 
         if (input.email) {
