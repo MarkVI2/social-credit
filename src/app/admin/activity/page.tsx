@@ -1,6 +1,6 @@
 "use client";
 
-import BackHomeButton from "@/components/BackHomeButton";
+import AdminHeader from "@/components/AdminHeader";
 import { useAdmin } from "@/hooks/useAdmin";
 import {
   IconExchange,
@@ -50,26 +50,10 @@ export default function AdminActivityPage() {
       style={{ background: "var(--background)", color: "var(--foreground)" }}
     >
       <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-4">
-        <div
-          className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card mb-4"
-          style={{
-            background: "var(--background)",
-            borderColor: "var(--foreground)",
-          }}
-        >
-          <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
-            <h1
-              className="font-heading text-xl sm:text-2xl font-extrabold uppercase tracking-wider"
-              style={{ color: "var(--accent)" }}
-            >
-              Activity
-            </h1>
-            <BackHomeButton className="mt-1" />
-          </div>
-          <p className="font-mono text-xs sm:text-sm opacity-80 mt-1">
-            Chronological system activity feed.
-          </p>
-        </div>
+        <AdminHeader
+          title="Activity"
+          description="Chronological system activity feed."
+        />
 
         <div
           className="p-3 sm:p-4 border-4 rounded-none shadow-card-sm"

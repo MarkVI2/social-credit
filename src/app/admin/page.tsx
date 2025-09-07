@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
-import { IconSearch, IconSun, IconMoon } from "@tabler/icons-react";
-import Link from "next/link";
+import { IconSearch } from "@tabler/icons-react";
+// import Link from "next/link";
 import { useAdmin } from "@/hooks/useAdmin";
 import TransactionEntry from "@/components/TransactionEntry";
+import AdminHeader from "@/components/AdminHeader";
 
 export default function AdminPage() {
   const [query, setQuery] = useState("");
@@ -36,173 +37,27 @@ export default function AdminPage() {
     };
   }>({ open: false, x: 0, y: 0 });
 
-  // theme
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  // Keep minimal token state for components that still need it
-  const [token, setToken] = useState<string>("");
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("auth_token");
-      const cookieToken = raw || "";
-      setToken(cookieToken);
-    } catch {}
-  }, []);
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("theme");
-      if (stored === "light" || stored === "dark") {
-        setTheme(stored);
-        document.documentElement.classList.remove("light", "dark");
-        document.documentElement.classList.add(stored);
-      } else {
-        // default to light explicitly
-        document.documentElement.classList.add("light");
-      }
-    } catch {}
-  }, []);
-
-  const toggleTheme = useCallback(() => {
-    setTheme((prev) => {
-      const next = prev === "light" ? "dark" : "light";
-      try {
-        localStorage.setItem("theme", next);
-      } catch {}
-      document.documentElement.classList.remove("light", "dark");
-      document.documentElement.classList.add(next);
-      return next;
-    });
-  }, []);
-
-  const header = useMemo(
-    () => (
-      <div className="w-full order-0 relative z-40">
-        <div
-          className="p-3 sm:p-4 border-4 rounded-none shadow-card relative z-40"
-          style={{
-            background: "var(--background)",
-            color: "var(--foreground)",
-            borderColor: "var(--foreground)",
-          }}
-        >
-          <div className="flex items-center justify-between gap-3 sm:gap-4">
-            <div className="min-w-0">
-              <div
-                className=" order-1 font-heading text-l sm:text-2xl font-extrabold uppercase tracking-wider truncate"
-                style={{ color: "var(--accent)" }}
-              >
-                The People&apos;s Ledger
-              </div>
-            </div>
-            <div className="hidden lg:flex items-center gap-3">
-              <Link
-                href="/admin/activity"
-                className="border-4 px-3 py-1 btn-3d"
-                style={{
-                  background: "var(--background)",
-                  borderColor: "var(--foreground)",
-                }}
-              >
-                Activity
-              </Link>
-              <Link
-                href="/admin/bank"
-                className="border-4 px-3 py-1 btn-3d"
-                style={{
-                  background: "var(--background)",
-                  borderColor: "var(--foreground)",
-                }}
-              >
-                Bank Access
-              </Link>
-              <Link
-                href="/marketplace"
-                className="border-4 px-3 py-1 btn-3d"
-                style={{
-                  background: "var(--background)",
-                  borderColor: "var(--foreground)",
-                }}
-              >
-                Auction/Marketplace
-              </Link>
-              <Link
-                href="/admin/statistics"
-                className="border-4 px-3 py-1 btn-3d"
-                style={{
-                  background: "var(--background)",
-                  borderColor: "var(--foreground)",
-                }}
-              >
-                Statistics
-              </Link>
-              <button
-                onClick={toggleTheme}
-                aria-label="Toggle Theme"
-                className="border-4 px-2 py-1 btn-3d flex items-center gap-1"
-                style={{
-                  background: "var(--background)",
-                  borderColor: "var(--foreground)",
-                }}
-              >
-                {theme === "light" ? (
-                  <IconMoon size={16} />
-                ) : (
-                  <IconSun size={16} />
-                )}
-                <span className="hidden xl:inline font-mono text-xs">
-                  {theme === "light" ? "Dark" : "Light"}
-                </span>
-              </button>
-            </div>
-            <div className="flex items-center gap-2 lg:gap-3 relative">
-              {/* Mobile theme toggle */}
-              <button
-                onClick={toggleTheme}
-                aria-label="Toggle Theme"
-                className="lg:hidden w-9 h-9 border-4 flex items-center justify-center btn-3d"
-                style={{
-                  background: "var(--background)",
-                  borderColor: "var(--foreground)",
-                }}
-              >
-                {theme === "light" ? (
-                  <IconMoon size={18} />
-                ) : (
-                  <IconSun size={18} />
-                )}
-              </button>
-              <AdminAvatar
-                token={token}
-                theme={theme}
-                onToggleTheme={toggleTheme}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    ),
-    [theme, toggleTheme, token]
-  );
+  // removed local theme and header; handled by AdminHeader and AdminProfileModal
 
   return (
     <div
-      className="min-h-screen relative"
+      className="h-screen overflow-hidden relative"
       style={{ background: "var(--background)", color: "var(--foreground)" }}
     >
-      <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-3">
-        {header}
+      <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-3 h-full flex flex-col">
+        <AdminHeader title="The People's Ledger" />
         {/* Main responsive flex layout: row on desktop, column on small screens */}
-        <div className="flex flex-col lg:flex-row items-start gap-4 mt-4 relative z-10">
+        <div className="flex flex-col lg:flex-row items-start gap-4 mt-4 relative z-10 flex-1 min-h-0 overflow-hidden">
           {/* Left column (leaderboard + recent transactions) */}
-          <div className="flex flex-col gap-4 w-full lg:w-80 xl:w-96 flex-shrink-0 order-1 lg:order-none">
+          <div className="flex flex-col gap-4 w-full lg:w-80 xl:w-96 flex-shrink-0 order-1 lg:order-none min-h-0 overflow-auto">
             <LeaderboardSidebar forceRowEntries fixedBadgeWidth />
             <AdminRecentTransactions />
           </div>
 
           {/* Right column (search + users table) */}
-          <div className="w-full flex flex-col gap-4 min-w-0 flex-1 order-0 lg:order-none">
+          <div className="w-full flex flex-col gap-4 min-w-0 flex-1 order-0 lg:order-none min-h-0 overflow-hidden">
             <div
-              className="p-3 sm:p-4 border-4 rounded-none shadow-card flex flex-col gap-4"
+              className="p-3 sm:p-4 border-4 rounded-none shadow-card flex flex-col gap-4 flex-1 min-h-0"
               style={{
                 background: "var(--background)",
                 borderColor: "var(--foreground)",
@@ -240,7 +95,7 @@ export default function AdminPage() {
               </div>
               {/* Table */}
               <div
-                className="p-0 border-4 rounded-none shadow-[6px_6px_0_0_#28282B] overflow-x-auto"
+                className="p-0 border-4 rounded-none shadow-[6px_6px_0_0_#28282B] overflow-auto flex-1 min-h-0"
                 style={{
                   background: "var(--background)",
                   borderColor: "var(--foreground)",
@@ -695,165 +550,7 @@ function UserContextMenu({
   );
 }
 
-function AdminAvatar({
-  token,
-  theme,
-  onToggleTheme,
-}: {
-  token: string;
-  theme: "light" | "dark";
-  onToggleTheme: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [initial, setInitial] = useState("A");
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const btnRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch("/api/auth/me", {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          cache: "no-store",
-        });
-        const data = await res.json();
-        if (data?.authenticated && data.user?.username) {
-          setInitial(String(data.user.username).charAt(0).toUpperCase());
-        }
-      } catch {}
-    };
-    load();
-  }, [token]);
-
-  const logout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {}
-    try {
-      localStorage.removeItem("currentUser");
-      localStorage.removeItem("auth_token");
-    } catch {}
-    window.location.href = "/auth/login";
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      const t = e.target as Node | null;
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(t) &&
-        btnRef.current &&
-        !btnRef.current.contains(t)
-      ) {
-        setOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  return (
-    <div className="relative z-50">
-      <button
-        ref={btnRef}
-        onClick={() => setOpen((s) => !s)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls="admin-profile-menu"
-        className="w-9 h-9 rounded-full border-4 flex items-center justify-center font-bold"
-        style={{
-          background: "var(--background)",
-          borderColor: "var(--foreground)",
-        }}
-      >
-        {initial}
-      </button>
-      {open && (
-        <div
-          ref={menuRef}
-          id="admin-profile-menu"
-          role="menu"
-          className="absolute right-0 mt-2 border-4 bg-[var(--background)] shadow-[6px_6px_0_0_#28282B] overflow-hidden z-[100]"
-          style={{ borderColor: "var(--foreground)" }}
-        >
-          <div className="min-w-56">
-            {/* Mobile-only nav links */}
-            <Link
-              href="/admin/activity"
-              className="lg:hidden block w-full text-left px-3 py-2 border-b-2 hover:opacity-90"
-              style={{ borderColor: "var(--foreground)" }}
-              role="menuitem"
-            >
-              Activity
-            </Link>
-            <Link
-              href="/admin/bank"
-              className="lg:hidden block w-full text-left px-3 py-2 border-b-2 hover:opacity-90"
-              style={{ borderColor: "var(--foreground)" }}
-              role="menuitem"
-            >
-              Bank Access
-            </Link>
-            <Link
-              href="/marketplace"
-              className="lg:hidden block w-full text-left px-3 py-2 border-b-2 hover:opacity-90"
-              style={{ borderColor: "var(--foreground)" }}
-              role="menuitem"
-            >
-              Auction/Marketplace
-            </Link>
-            <Link
-              href="/admin/statistics"
-              className="lg:hidden block w-full text-left px-3 py-2 border-b-2 hover:opacity-90"
-              style={{ borderColor: "var(--foreground)" }}
-              role="menuitem"
-            >
-              Statistics
-            </Link>
-            {/* Desktop Activity link (kept inside menu; could also live in top bar if desired) */}
-            <Link
-              href="/admin/activity"
-              className="hidden lg:block w-full text-left px-3 py-2 border-b-2 hover:opacity-90"
-              style={{ borderColor: "var(--foreground)" }}
-              role="menuitem"
-            >
-              Activity
-            </Link>
-            {/* Theme toggle inside menu (all breakpoints) */}
-            <button
-              onClick={onToggleTheme}
-              className="w-full text-left px-3 py-2 border-b-2 hover:opacity-90 flex items-center gap-2"
-              style={{ borderColor: "var(--foreground)" }}
-              role="menuitem"
-            >
-              {theme === "light" ? (
-                <IconMoon size={16} />
-              ) : (
-                <IconSun size={16} />
-              )}
-              <span>Switch to {theme === "light" ? "Dark" : "Light"} Mode</span>
-            </button>
-            <button
-              onClick={logout}
-              className="w-full text-left px-3 py-2 hover:opacity-90"
-              role="menuitem"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+// Old AdminAvatar removed; new header/menu lives in components/AdminHeader
 
 function AdminRecentTransactions() {
   interface ActivityItemData {
