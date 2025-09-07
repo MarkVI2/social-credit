@@ -230,7 +230,9 @@ export default function DashboardPage() {
                       {/* User balance display */}
                       <p className="font-mono text-sm mt-2">
                         Current Balance:{" "}
-                        <span className="font-bold">{balance} credits</span>
+                        <span className="font-bold">
+                          {Math.trunc((user.credits as number) ?? 0)} credits
+                        </span>
                       </p>
                     </div>
                   </div>
