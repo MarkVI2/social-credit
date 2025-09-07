@@ -29,7 +29,7 @@ export default function LeaderboardSidebar({
 
   return (
     <aside
-      className="w-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm"
+      className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col"
       style={{
         borderColor: "var(--foreground)",
         background: "var(--background)",
@@ -39,7 +39,7 @@ export default function LeaderboardSidebar({
       }}
       aria-label="Leaderboard Sidebar"
     >
-      <header className="mb-2 sm:mb-3">
+      <header className="mb-2 sm:mb-3 shrink-0">
         <h2
           className={`${oswald.className} uppercase tracking-wider font-extrabold text-lg sm:text-xl leading-none`}
           style={{ color: "var(--accent)" }}
@@ -70,10 +70,7 @@ export default function LeaderboardSidebar({
       )}
 
       {!loading && !errorMessage && (
-        <ul
-          className="flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto"
-          style={{ maxHeight: "50vh" }}
-        >
+        <ul className="flex-1 min-h-0 flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto">
           {items.map((u, idx) => {
             const isMe =
               (myId && u._id === myId) ||
@@ -91,8 +88,7 @@ export default function LeaderboardSidebar({
           })}
         </ul>
       )}
-
-      <footer className="mt-3 sm:mt-4">
+      <footer className="mt-3 sm:mt-4 shrink-0">
         <p className="text-[10px] sm:text-xs opacity-70 leading-snug">
           Note: No actual ideology was harmed in the making of these credits.
         </p>

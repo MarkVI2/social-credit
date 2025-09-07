@@ -18,7 +18,14 @@ export default function AdminHeader({ title, description }: Props) {
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const pathname = usePathname();
 
-  const classBank = trpc.admin.classbank.getClassBankStatus.useQuery();
+  const classBank = trpc.admin.classbank.getClassBankStatus.useQuery(
+    undefined,
+    {
+      refetchInterval: 90_000,
+      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true,
+    }
+  );
   const me = trpc.user.getMe.useQuery(undefined, { staleTime: 5_000 });
 
   const initial = useMemo(() => {

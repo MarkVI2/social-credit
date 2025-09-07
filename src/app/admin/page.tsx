@@ -36,26 +36,27 @@ export default function AdminPage() {
       timeoutUntil?: string | Date | null;
     };
   }>({ open: false, x: 0, y: 0 });
-
-  // removed local theme and header; handled by AdminHeader and AdminProfileModal
-
   return (
     <div
-      className="h-screen overflow-hidden relative"
+      className="relative min-h-screen lg:h-screen lg:overflow-hidden"
       style={{ background: "var(--background)", color: "var(--foreground)" }}
     >
-      <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-3 h-full flex flex-col">
+      <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-3 lg:h-full flex flex-col">
         <AdminHeader title="The People's Ledger" />
         {/* Main responsive flex layout: row on desktop, column on small screens */}
-        <div className="flex flex-col lg:flex-row items-start gap-4 mt-4 relative z-10 flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col lg:flex-row items-start gap-4 mt-4 relative z-10 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
           {/* Left column (leaderboard + recent transactions) */}
-          <div className="flex flex-col gap-4 w-full lg:w-80 xl:w-96 flex-shrink-0 order-1 lg:order-none min-h-0 overflow-auto">
-            <LeaderboardSidebar forceRowEntries fixedBadgeWidth />
-            <AdminRecentTransactions />
+          <div className="flex flex-col gap-4 w-full lg:w-80 xl:w-96 flex-shrink-0 order-1 lg:order-none lg:h-full lg:min-h-0 lg:overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-auto">
+              <LeaderboardSidebar forceRowEntries fixedBadgeWidth />
+            </div>
+            <div className="lg:min-h-0">
+              <AdminRecentTransactions />
+            </div>
           </div>
 
           {/* Right column (search + users table) */}
-          <div className="w-full flex flex-col gap-4 min-w-0 flex-1 order-0 lg:order-none min-h-0 overflow-hidden">
+          <div className="w-full flex flex-col gap-4 min-w-0 flex-1 order-0 lg:order-none lg:h-full lg:overflow-hidden">
             <div
               className="p-3 sm:p-4 border-4 rounded-none shadow-card flex flex-col gap-4 flex-1 min-h-0"
               style={{
@@ -95,7 +96,7 @@ export default function AdminPage() {
               </div>
               {/* Table */}
               <div
-                className="p-0 border-4 rounded-none shadow-[6px_6px_0_0_#28282B] overflow-auto flex-1 min-h-0"
+                className="p-0 border-4 rounded-none shadow-[6px_6px_0_0_#28282B] flex-1 min-h-0 overflow-auto"
                 style={{
                   background: "var(--background)",
                   borderColor: "var(--foreground)",
@@ -169,34 +170,40 @@ export default function AdminPage() {
                     )}
                   </tbody>
                 </table>
-              </div>
-              {/* Pagination */}
-              <div className="flex items-center justify-between">
-                <button
-                  disabled={page <= 1}
-                  onClick={() => setPage(page - 1)}
-                  className="border-4 px-3 py-1 btn-3d disabled:opacity-60"
+                {/* Pagination (sticky at bottom of scroll container) */}
+                <div
+                  className="flex items-center justify-between sticky bottom-0 px-3 py-2 border-t-4"
                   style={{
                     background: "var(--background)",
                     borderColor: "var(--foreground)",
                   }}
                 >
-                  Prev
-                </button>
-                <div className="font-mono">
-                  Page {page} / {totalPages}
+                  <button
+                    disabled={page <= 1}
+                    onClick={() => setPage(page - 1)}
+                    className="border-4 px-3 py-1 btn-3d disabled:opacity-60"
+                    style={{
+                      background: "var(--background)",
+                      borderColor: "var(--foreground)",
+                    }}
+                  >
+                    Prev
+                  </button>
+                  <div className="font-mono">
+                    Page {page} / {totalPages}
+                  </div>
+                  <button
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(page + 1)}
+                    className="border-4 px-3 py-1 btn-3d disabled:opacity-60"
+                    style={{
+                      background: "var(--background)",
+                      borderColor: "var(--foreground)",
+                    }}
+                  >
+                    Next
+                  </button>
                 </div>
-                <button
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(page + 1)}
-                  className="border-4 px-3 py-1 btn-3d disabled:opacity-60"
-                  style={{
-                    background: "var(--background)",
-                    borderColor: "var(--foreground)",
-                  }}
-                >
-                  Next
-                </button>
               </div>
             </div>
           </div>
