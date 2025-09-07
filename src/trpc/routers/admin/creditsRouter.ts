@@ -172,11 +172,13 @@ export const creditsRouter = createTRPCRouter({
                 admin: me.username || me.email || "admin",
                 user: target.username || target.email || "",
                 credits: amount,
+                reason,
               })
             : buildAdminTakeMessage({
                 admin: me.username || me.email || "admin",
                 user: target.username || target.email || "",
                 credits: Math.abs(amount),
+                reason,
               });
 
         await db.collection("transactionHistory").insertOne({
