@@ -363,7 +363,8 @@ export function buildUserTransferMessage(ctx: UserTransferContext): string {
   let msg = finalize(picked.template, {
     from: fromEsc,
     to: toEsc,
-    credits: ctx.credits,
+    // Bold only the credits token here to avoid later regex collisions
+    credits: `<span class="font-bold">${ctx.credits}</span>`,
     reason,
   });
   // Highlight sender and recipient in red and bold
@@ -374,11 +375,6 @@ export function buildUserTransferMessage(ctx: UserTransferContext): string {
   msg = msg.replace(
     new RegExp(toEsc.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
     `<span class="text-red-500 font-bold">${toEsc}</span>`
-  );
-  // Bold only the standalone credit amount occurrence (avoid touching digits in usernames like '23AI69')
-  msg = msg.replace(
-    new RegExp(`\\b${ctx.credits}\\b`),
-    `<span class="font-bold">${ctx.credits}</span>`
   );
   return msg;
 }
