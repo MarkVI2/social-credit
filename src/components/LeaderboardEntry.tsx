@@ -12,6 +12,8 @@ export interface LeaderboardEntryData {
   kollaborationKredits: number;
   avatarUrl?: string;
   rank?: string;
+  txCount?: number;
+  netGain?: number;
 }
 
 export function LeaderboardEntry({
@@ -66,6 +68,17 @@ export function LeaderboardEntry({
           <div className="text-[10px] sm:text-xs opacity-80 font-mono break-all">
             @{user.handle || "unknown"}
           </div>
+          {typeof user.txCount === "number" && (
+            <div className="text-[10px] sm:text-xs opacity-70 font-mono">
+              {user.txCount} transactions
+            </div>
+          )}
+          {typeof user.netGain === "number" && (
+            <div className="text-[10px] sm:text-xs opacity-70 font-mono">
+              Net: {user.netGain >= 0 ? "+" : ""}
+              {user.netGain} KK
+            </div>
+          )}
           {/*   {user.rank && (
             <div className="text-[10px] sm:text-xs opacity-90 font-mono">
               {user.rank}

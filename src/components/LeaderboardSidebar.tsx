@@ -2,8 +2,8 @@
 
 import { Oswald } from "next/font/google";
 import LeaderboardEntry, { LeaderboardEntryData } from "./LeaderboardEntry";
-import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { trpc } from "@/trpc/client";
+import { useState } from "react";
 import { useMe } from "@/hooks/useMe";
 
 const oswald = Oswald({ subsets: ["latin"], weight: ["500", "600", "700"] });
@@ -23,7 +23,32 @@ export default function LeaderboardSidebar({
     (me.data?.user as any)?._id?.toString?.() ?? (me.data?.user as any)?._id;
   const myUsername = (me.data?.user as any)?.username as string | undefined;
 
-  const { data: leaderboardData, isLoading: loading, error } = useLeaderboard();
+  const [filter, setFilter] = useState<
+    "kredits" | "active" | "topGainers" | "topLosers"
+  >("kredits");
+
+  const trpcUtils = trpc.useContext();
+
+  const {
+    data: leaderboardData,
+    isLoading: loading,
+    error,
+  } = trpc.leaderboard.getLeaderboard.useQuery(
+    { filter },
+    { staleTime: 10_000 }
+  );
+
+  // Subscribe to leaderboard updates for the current filter and invalidate automatically
+  trpc.leaderboard.onUpdate.useSubscription(
+    { filter },
+    {
+      onData: (data) => {
+        try {
+          trpcUtils.leaderboard.getLeaderboard.invalidate({ filter } as any);
+        } catch {}
+      },
+    }
+  );
 
   const items = (leaderboardData?.users || []) as LeaderboardEntryData[];
   const errorMessage = error?.message || null;
@@ -56,6 +81,30 @@ export default function LeaderboardSidebar({
           Redeemable ☭ for coffee, lab help, or moral support
         </p>
       </header>
+
+      {/* Filter pills */}
+      <div className="mb-3 flex gap-2 flex-wrap">
+        {(
+          [
+            { key: "kredits", label: "By Kredits" },
+            { key: "active", label: "Most Active" },
+            { key: "topGainers", label: "Top Gainers" },
+            { key: "topLosers", label: "Top Losers" },
+          ] as { key: string; label: string }[]
+        ).map((p) => (
+          <button
+            key={p.key}
+            onClick={() => setFilter(p.key as any)}
+            className={`px-2 py-1 border-2 rounded-none font-mono text-xs ${
+              filter === p.key
+                ? "bg-[var(--accent)] text-[var(--background)] border-[var(--accent)]"
+                : "bg-transparent text-[var(--foreground)] border-[var(--foreground)]"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
 
       {/* Content states */}
       {loading && (
