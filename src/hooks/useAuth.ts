@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import type { User } from '@/types/user';
-import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import type { User } from "@/types/user";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 export function useAuth() {
   const router = useRouter();
@@ -42,42 +42,36 @@ export function useAuth() {
     }
     setIsLoading(false);
     router.push("/auth/login");
-  }
+  };
 
-  const refreshAuth = async (userData: User) => {
+  const refreshAuth = async (userData?: User) => {
     setIsLoading(true);
-    setUser(userData);
-    setIsAuthenticated(true);
+    if (userData) {
+      setUser(userData);
+      setIsAuthenticated(true);
+    }
     try {
-      if (!user) return;
-      // Query new user API to get the current user
-      const res = await fetch("/api/user", { cache: "no-store" });
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
       const data = await res.json();
-      if (data.success && data.user) {
+      if (data?.authenticated && data.user) {
         const fresh = data.user as User;
-        if (fresh && typeof fresh.credits === "number") {
-          setBalance(Math.trunc(fresh.credits));
-          const currentCredits = user?.credits;
-          if (currentCredits !== fresh.credits) {
-            const stored: User & { credits: number } = {
-              ...user,
-              credits: fresh.credits,
-            } as User & { credits: number };
-            try {
-              localStorage.setItem("currentUser", JSON.stringify(stored));
-            } catch { }
-            setUser(stored);
-          }
+        if (fresh && typeof (fresh as any).credits === "number") {
+          setBalance(Math.trunc((fresh as any).credits as number));
         }
+        try {
+          localStorage.setItem("currentUser", JSON.stringify(fresh));
+        } catch {}
+        setUser(fresh);
+        setIsAuthenticated(true);
       }
     } catch (e) {
       console.error("Failed to refresh user", e);
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === "admin";
 
   return {
     user: user as User | null,

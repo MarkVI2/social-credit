@@ -8,7 +8,7 @@ export type VanityRank = {
 // Ordered ascending by min threshold
 export const RANKS: VanityRank[] = [
   { min: 0, name: "Recruit" },
-  { min: 20, name: "Jr. Komrade" },
+  { min: 20, name: "Comrade Jr." },
   { min: 30, name: "Komrade" },
   { min: 50, name: "Komrade Sr." },
   { min: 70, name: "Brigade Org." },
