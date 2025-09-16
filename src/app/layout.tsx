@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import { TRPCReactProvider } from "@/trpc/client";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import Prefetcher from "@/components/Prefetcher";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -51,6 +52,7 @@ export default async function RootLayout({
         <body
           className={`${inter.variable} ${oswald.variable} ${jbMono.variable} antialiased`}
         >
+          <Prefetcher />
           {children}
         </body>
       </html>
