@@ -180,22 +180,22 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="min-h-screen"
+      className="min-h-screen lg:h-screen lg:overflow-hidden"
       style={{ background: "var(--background)", color: "var(--foreground)" }}
     >
       {/* Page container */}
-      <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-3 min-w-0">
+      <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-3 min-w-0 lg:h-full lg:flex lg:flex-col">
         {/* Responsive flex layout: column on mobile, row on lg */}
-        <div className="flex flex-col lg:flex-row items-start gap-4">
+        <div className="flex flex-col lg:flex-row items-start gap-4 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
           {/* Left column: leaderboard (order after content on mobile for priority) */}
-          <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 order-1 lg:order-none lg:sticky lg:top-24 self-start min-w-0">
-            <div className="lg:pr-2">
+          <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 order-1 lg:order-none lg:h-full lg:min-h-0 lg:overflow-hidden min-w-0">
+            <div className="lg:pr-2 lg:h-full lg:overflow-auto">
               <LeaderboardSidebar forceRowEntries fixedBadgeWidth />
             </div>
           </div>
 
           {/* Main content */}
-          <div className="w-full max-w-screen-md mx-auto flex flex-col gap-4 min-w-0 order-0 lg:order-none flex-1">
+          <div className="w-full max-w-screen-md mx-auto flex flex-col gap-4 min-w-0 order-0 lg:order-none flex-1 lg:h-full lg:overflow-y-auto lg:pr-2">
             {/* Header (welcome bar) */}
             <div className="w-full">
               <div
@@ -475,9 +475,9 @@ export default function DashboardPage() {
             </div>
 
             {/* Recent Transactions */}
-            <div className="w-full">
+            <div className="w-full lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
               <div
-                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card"
+                className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card lg:flex-1 lg:min-h-0 lg:flex lg:flex-col"
                 style={{
                   background: "var(--background)",
                   color: "var(--foreground)",
@@ -485,7 +485,7 @@ export default function DashboardPage() {
                 }}
               >
                 <h3
-                  className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-3"
+                  className="font-heading text-sm sm:text-base md:text-lg font-extrabold uppercase tracking-wider mb-3 lg:shrink-0"
                   style={{ color: "var(--accent)" }}
                 >
                   Recent Transactions
@@ -499,7 +499,7 @@ export default function DashboardPage() {
                     <p className="font-mono opacity-80">No activity yet.</p>
                   </div>
                 ) : (
-                  <div className="max-h-72 overflow-y-auto pr-1">
+                  <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto max-h-80 lg:max-h-full overflow-y-auto pr-1">
                     <ul
                       className="divide-y-2"
                       style={{ borderColor: "var(--foreground)" }}

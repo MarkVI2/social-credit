@@ -29,7 +29,7 @@ export default function LeaderboardSidebar({
 
   return (
     <aside
-      className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col lg:max-h-[calc(100vh-8rem)] max-h-[calc(100vh-8rem)] overflow-hidden"
+      className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col lg:max-h-full max-h-[calc(100vh-8rem)] overflow-hidden"
       style={{
         borderColor: "var(--foreground)",
         background: "var(--background)",
