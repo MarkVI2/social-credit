@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { trpc } from "@/trpc/client";
 
 interface StoredUser {
   role?: string;
@@ -13,18 +14,9 @@ export default function BackHomeButton({
   className?: string;
 }) {
   const router = useRouter();
-  const [role, setRole] = useState<string | undefined>(undefined);
   const pathname = usePathname();
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("currentUser");
-      if (raw) {
-        const parsed: StoredUser = JSON.parse(raw);
-        setRole(parsed.role || "user");
-      }
-    } catch {}
-  }, []);
+  const me = trpc.user.getMe.useQuery(undefined, { staleTime: 5_000 });
+  const role = (me.data?.user as StoredUser | undefined)?.role || "user";
 
   const goHome = useCallback(() => {
     const isAdminSection = pathname.startsWith("/admin");

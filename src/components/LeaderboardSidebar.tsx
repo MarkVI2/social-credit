@@ -29,7 +29,7 @@ export default function LeaderboardSidebar({
 
   return (
     <aside
-      className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col"
+      className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col lg:max-h-[calc(100vh-8rem)] max-h-[calc(100vh-8rem)] overflow-hidden"
       style={{
         borderColor: "var(--foreground)",
         background: "var(--background)",
@@ -70,7 +70,13 @@ export default function LeaderboardSidebar({
       )}
 
       {!loading && !errorMessage && (
-        <ul className="flex-1 min-h-0 flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto">
+        <ul
+          className="flex-1 flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto pr-1 pb-4"
+          style={{
+            scrollbarColor: "var(--foreground) transparent",
+            scrollbarWidth: "thin",
+          }}
+        >
           {items.map((u, idx) => {
             const isMe =
               (myId && u._id === myId) ||

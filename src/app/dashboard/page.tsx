@@ -8,6 +8,7 @@ import { IconLogout } from "@tabler/icons-react";
 import { useUsers } from "@/hooks/useUsers";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
+import { trpc } from "@/trpc/client";
 
 // Transaction item shape (user + global recent logs)
 interface UserTransaction {
@@ -30,6 +31,21 @@ export default function DashboardPage() {
   const { allUsers: users } = useUsers();
   const { transactionHistory, getGlobalHistory, transfer, isTransferring } =
     useTransactions();
+
+  // Live user data via tRPC (react-query)
+  const utils = trpc.useUtils();
+  const meQuery = trpc.user.getMe.useQuery(undefined, {
+    staleTime: 5_000,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
+  });
+  // Subscribe to leaderboard updates (emitted on any credit change)
+  trpc.leaderboard.onUpdate.useSubscription(undefined, {
+    onData: () => {
+      utils.user.getMe.invalidate();
+      utils.transactions.getMyHistory.invalidate();
+    },
+  });
 
   // Get global history
   const globalHistoryQuery = getGlobalHistory(10);
@@ -55,9 +71,10 @@ export default function DashboardPage() {
     [emailToUsername]
   );
 
+  const me = meQuery.data?.user || user || null;
   const userInitial = useMemo(
-    () => (user?.username ? user.username.charAt(0).toUpperCase() : "?"),
-    [user?.username]
+    () => (me?.username ? me.username.charAt(0).toUpperCase() : "?"),
+    [me?.username]
   );
 
   // Random greeting messages
@@ -78,10 +95,10 @@ export default function DashboardPage() {
   );
 
   const greeting = useMemo(() => {
-    const name = user?.username || "User";
+    const name = me?.username || "User";
     const msg = greetings[Math.floor(Math.random() * greetings.length)];
     return msg.replace("{name}", name);
-  }, [greetings, user?.username]);
+  }, [greetings, me?.username]);
 
   // Validation state
   const matchedUser = useMemo(
@@ -194,7 +211,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-4 min-w-0 flex-1">
                     <button
                       onClick={() => setShowSettings(true)}
-                      aria-label={`Open settings for ${user.username}`}
+                      aria-label={`Open settings for ${me?.username ?? "user"}`}
                       className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 flex items-center justify-center font-bold btn-3d shrink-0 text-xl sm:text-2xl"
                       style={{
                         background: "var(--background)",
@@ -231,7 +248,8 @@ export default function DashboardPage() {
                       <p className="font-mono text-sm mt-2">
                         Current Balance:{" "}
                         <span className="font-bold">
-                          {Math.trunc((user.credits as number) ?? 0)} credits
+                          {Math.trunc((me?.credits as number) ?? 0)} credits
+                          credits
                         </span>
                       </p>
                     </div>
@@ -275,10 +293,27 @@ export default function DashboardPage() {
                       className="font-heading font-extrabold tracking-wider text-4xl sm:text-5xl md:text-6xl"
                       style={{ color: "var(--accent)" }}
                     >
-                      {Math.trunc((user.credits as number) ?? 0)}
+                      {Math.trunc((me?.credits as number) ?? 0)}
                     </div>
-                    <div className="font-mono text-[11px] sm:text-xs opacity-80">
-                      credits
+                    <div className="font-mono text-[11px] sm:text-xs opacity-80 flex items-center gap-2">
+                      <span>credits</span>
+                      {isTransferring ? (
+                        <span
+                          className="px-1.5 py-0.5 border-2 rounded-none"
+                          style={{ borderColor: "var(--foreground)" }}
+                          title="Optimistic update pending confirmation"
+                        >
+                          pending…
+                        </span>
+                      ) : meQuery.isFetching ? (
+                        <span
+                          className="px-1.5 py-0.5 border-2 rounded-none"
+                          style={{ borderColor: "var(--foreground)" }}
+                          title="Syncing with server"
+                        >
+                          syncing…
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -433,7 +468,7 @@ export default function DashboardPage() {
               )}
               {showSettings && (
                 <SettingsModal
-                  user={user}
+                  user={me}
                   onClose={() => setShowSettings(false)}
                 />
               )}
