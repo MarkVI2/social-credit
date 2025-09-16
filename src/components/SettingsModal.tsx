@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { trpc } from "@/trpc/client";
+import { useMe } from "@/hooks/useMe";
 
 interface Props {
   user: { username: string; email: string } | null;
@@ -13,9 +14,10 @@ export default function SettingsModal({ user, onClose }: Props) {
     "settings" | "possessions" | "statistics"
   >("settings");
   // Fetch user stats for statistics tab
+  const me = useMe();
   const { data: statsData, isLoading: statsLoading } = trpc.user.getMe.useQuery(
     undefined,
-    { enabled: !!user }
+    { enabled: !!me.data }
   );
 
   const [theme, setTheme] = useState<"light" | "dark">(() => {

@@ -107,10 +107,13 @@ export function useTransactions() {
   });
 
   // Get user's transaction history
+  const tokenAvailable =
+    typeof window !== "undefined" && !!localStorage.getItem("auth_token");
+
   const transactionHistory = trpc.transactions.getMyHistory.useQuery(
     { limit: 10 },
     {
-      enabled: isAuthenticated,
+      enabled: isAuthenticated && tokenAvailable,
       staleTime: 2 * 60 * 1000, // 2 minutes
     }
   );

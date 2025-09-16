@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import BackHomeButton from "@/components/BackHomeButton";
 import { trpc } from "@/trpc/client";
+import { useMe } from "@/hooks/useMe";
 import { classifyItem } from "@/lib/marketplaceUtils";
 
 // Types for store items (kept minimal; align with backend when available)
@@ -572,7 +573,7 @@ function AdminAuctionCreator() {
 // Helper: People's Store (lists items via tRPC and renders cards)
 function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
   const [filter, setFilter] = useState<"all" | "ranks" | "utilities">("all");
-  const me = trpc.user.getMe.useQuery(undefined, { staleTime: 5000 });
+  const me = useMe();
   const myInventory = trpc.marketplace.getMyInventory.useQuery(undefined, {
     staleTime: 5000,
   });
@@ -940,11 +941,8 @@ function AuctionHouse({ user }: { user?: { role?: "user" | "admin" } | null }) {
 
 export default function MarketplacePage() {
   const [activeView, setActiveView] = useState<"store" | "auctions">("store");
-  const { data: me } = trpc.user.getMe.useQuery(undefined, {
-    retry: 1,
-    staleTime: 10_000,
-  });
-  const user = me?.user ?? null;
+  const meQ = useMe();
+  const user = meQ.data?.user ?? null;
   const [showStoreModal, setShowStoreModal] = useState(false);
   const [showAuctionModal, setShowAuctionModal] = useState(false);
 

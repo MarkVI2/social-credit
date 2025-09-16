@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { trpc } from "@/trpc/client";
+import { useMe } from "@/hooks/useMe";
 
 type AdminUser = { username: string; email: string } | null;
 
@@ -231,7 +232,10 @@ export default function AdminProfileModal({ adminUser, onClose }: Props) {
 }
 
 function UserStats() {
-  const { data: statsData, isLoading } = trpc.user.getMe.useQuery();
+  const me = useMe();
+  const { data: statsData, isLoading } = trpc.user.getMe.useQuery(undefined, {
+    enabled: !!me.data,
+  });
   if (isLoading)
     return <p className="font-mono text-sm">Loading statistics…</p>;
   const u = statsData?.user;

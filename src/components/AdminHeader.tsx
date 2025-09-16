@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/trpc/client";
+import { useMe } from "@/hooks/useMe";
 import AdminProfileModal from "@/components/AdminProfileModal";
 import { usePathname } from "next/navigation";
 
@@ -26,7 +27,7 @@ export default function AdminHeader({ title, description }: Props) {
       refetchOnWindowFocus: true,
     }
   );
-  const me = trpc.user.getMe.useQuery(undefined, { staleTime: 5_000 });
+  const me = useMe();
 
   const initial = useMemo(() => {
     const u = me.data?.user?.username || "";

@@ -4,6 +4,7 @@ import { Oswald } from "next/font/google";
 import LeaderboardEntry, { LeaderboardEntryData } from "./LeaderboardEntry";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { trpc } from "@/trpc/client";
+import { useMe } from "@/hooks/useMe";
 
 const oswald = Oswald({ subsets: ["latin"], weight: ["500", "600", "700"] });
 
@@ -17,7 +18,7 @@ export default function LeaderboardSidebar({
   fixedBadgeWidth?: boolean;
 }) {
   // Fetch current user first to keep hook order stable
-  const me = trpc.user.getMe.useQuery(undefined, { staleTime: 5_000 });
+  const me = useMe();
   const myId =
     (me.data?.user as any)?._id?.toString?.() ?? (me.data?.user as any)?._id;
   const myUsername = (me.data?.user as any)?.username as string | undefined;
@@ -29,7 +30,7 @@ export default function LeaderboardSidebar({
 
   return (
     <aside
-      className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col lg:max-h-full max-h-[calc(100vh-8rem)] overflow-hidden"
+      className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col lg:max-h-full max-h-[calc(100vh-8rem)]"
       style={{
         borderColor: "var(--foreground)",
         background: "var(--background)",
@@ -71,7 +72,7 @@ export default function LeaderboardSidebar({
 
       {!loading && !errorMessage && (
         <ul
-          className="flex-1 flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto pr-1 pb-4"
+          className="flex-1 min-h-0 flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto pr-1 pb-4"
           style={{
             scrollbarColor: "var(--foreground) transparent",
             scrollbarWidth: "thin",

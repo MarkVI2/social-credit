@@ -9,6 +9,7 @@ import { useUsers } from "@/hooks/useUsers";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/trpc/client";
+import { useMe } from "@/hooks/useMe";
 
 // Transaction item shape (user + global recent logs)
 interface UserTransaction {
@@ -34,11 +35,7 @@ export default function DashboardPage() {
 
   // Live user data via tRPC (react-query)
   const utils = trpc.useUtils();
-  const meQuery = trpc.user.getMe.useQuery(undefined, {
-    staleTime: 5_000,
-    refetchOnReconnect: true,
-    refetchOnWindowFocus: true,
-  });
+  const meQuery = useMe();
   // Subscribe to leaderboard updates (emitted on any credit change)
   trpc.leaderboard.onUpdate.useSubscription(undefined, {
     onData: () => {
@@ -180,22 +177,22 @@ export default function DashboardPage() {
 
   return (
     <div
-      className="min-h-screen lg:h-screen lg:overflow-hidden"
+      className="min-h-screen lg:h-screen"
       style={{ background: "var(--background)", color: "var(--foreground)" }}
     >
       {/* Page container */}
       <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-3 min-w-0 lg:h-full lg:flex lg:flex-col">
         {/* Responsive flex layout: column on mobile, row on lg */}
-        <div className="flex flex-col lg:flex-row items-start gap-4 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
+        <div className="flex flex-col lg:flex-row items-start gap-4 lg:flex-1 lg:min-h-0">
           {/* Left column: leaderboard (order after content on mobile for priority) */}
-          <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 order-1 lg:order-none lg:h-full lg:min-h-0 lg:overflow-hidden min-w-0">
+          <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 order-1 lg:order-none lg:h-full lg:min-h-0 min-w-0">
             <div className="lg:pr-2 lg:h-full lg:overflow-auto">
               <LeaderboardSidebar forceRowEntries fixedBadgeWidth />
             </div>
           </div>
 
           {/* Main content */}
-          <div className="w-full max-w-screen-md mx-auto flex flex-col gap-4 min-w-0 order-0 lg:order-none flex-1 lg:h-full lg:overflow-y-auto lg:pr-2">
+          <div className="w-full max-w-screen-md mx-auto flex flex-col gap-4 min-w-0 order-0 lg:order-none flex-1 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-2">
             {/* Header (welcome bar) */}
             <div className="w-full">
               <div

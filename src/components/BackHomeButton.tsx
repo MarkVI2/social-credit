@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { trpc } from "@/trpc/client";
+import { useMe } from "@/hooks/useMe";
 
 interface StoredUser {
   role?: string;
@@ -15,7 +15,7 @@ export default function BackHomeButton({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const me = trpc.user.getMe.useQuery(undefined, { staleTime: 5_000 });
+  const me = useMe();
   const role = (me.data?.user as StoredUser | undefined)?.role || "user";
 
   const goHome = useCallback(() => {
