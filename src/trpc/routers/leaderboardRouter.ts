@@ -14,6 +14,7 @@ interface LeaderboardUser {
   avatarUrl?: string;
   rank?: string;
   earnedLifetime?: number;
+  courseCredits?: number;
 }
 
 // Event emitter for leaderboard updates
@@ -25,7 +26,7 @@ export const broadcastLeaderboardUpdate = () => {
 };
 
 export const leaderboardRouter = createTRPCRouter({
-  // Get current leaderboard data with optional filter
+  // Get current leaderboard data
   getLeaderboard: publicProcedure
     .input(
       z
@@ -40,7 +41,6 @@ export const leaderboardRouter = createTRPCRouter({
       try {
         const db = await getDatabase();
         const filter = input?.filter || "kredits";
-
         let pipeline: any[] = [];
 
         if (filter === "kredits") {
@@ -57,6 +57,7 @@ export const leaderboardRouter = createTRPCRouter({
                 avatarUrl: 1,
                 rank: 1,
                 earnedLifetime: 1,
+                courseCredits: 1,
               },
             },
           ];
@@ -96,11 +97,12 @@ export const leaderboardRouter = createTRPCRouter({
                 txCount: 1,
                 avatarUrl: 1,
                 rank: 1,
+                courseCredits: 1,
               },
             },
           ];
         } else if (filter === "topGainers" || filter === "topLosers") {
-          // Net gain/loss computed as received - sent (by summing amounts)
+          // Net gain/loss (received - sent)
           pipeline = [
             {
               $lookup: {
@@ -151,6 +153,7 @@ export const leaderboardRouter = createTRPCRouter({
                 netGain: 1,
                 avatarUrl: 1,
                 rank: 1,
+                courseCredits: 1,
               },
             },
           ];

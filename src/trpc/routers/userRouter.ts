@@ -60,6 +60,7 @@ export const userRouter = createTRPCRouter({
         receivedLifetime: userDoc.receivedLifetime || 0,
         transactionsSent: countSent,
         transactionsReceived: countReceived,
+        courseCredits: userDoc.courseCredits,
         createdAt: userDoc.createdAt,
       },
     };

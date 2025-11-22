@@ -7,6 +7,14 @@ import { protectedProcedure } from "../init";
 import { broadcastLeaderboardUpdate } from "./leaderboardRouter";
 import { logTransaction } from "@/services/transactionService";
 import { classifyItem } from "@/lib/marketplaceUtils";
+import {
+  calculateCourseCredits,
+  IGNORED_USERS_FOR_GLOBAL_MAX,
+} from "@/lib/ranks";
+import {
+  getGlobalMaxScore,
+  updateGlobalMaxScore,
+} from "@/services/configService";
 
 export const marketplaceRouter = createTRPCRouter({
   // Admin only: create a marketplace item
@@ -167,11 +175,36 @@ export const marketplaceRouter = createTRPCRouter({
       }
 
       // Deduct and add to inventory atomically-ish; then credit class bank
+      const newSpentLifetime = (me.spentLifetime ?? 0) + price;
+
+      // Dynamic Course Credits Calculation
+      let globalMax = await getGlobalMaxScore();
+      const myScore =
+        0.75 * (me.earnedLifetime ?? 20) + 0.25 * newSpentLifetime;
+
+      const isIgnored =
+        IGNORED_USERS_FOR_GLOBAL_MAX.includes(me.username) ||
+        IGNORED_USERS_FOR_GLOBAL_MAX.includes(me.email);
+
+      if (!isIgnored && myScore > globalMax) {
+        globalMax = myScore;
+        await updateGlobalMaxScore(globalMax);
+      }
+
+      const newCourseCredits = calculateCourseCredits(
+        me.earnedLifetime ?? 20,
+        newSpentLifetime,
+        globalMax
+      );
+
       await users.updateOne(
         { _id: ctx.user._id },
         {
           $inc: { credits: -price, spentLifetime: price },
-          $set: { updatedAt: new Date() },
+          $set: {
+            updatedAt: new Date(),
+            courseCredits: newCourseCredits,
+          },
         }
       );
       await inventory.insertOne({

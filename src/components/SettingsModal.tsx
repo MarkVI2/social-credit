@@ -227,11 +227,7 @@ export default function SettingsModal({ user, onClose }: Props) {
                   Transactions Received: {statsData.user.transactionsReceived}
                 </li>
                 <li>
-                  Course Credits:{" "}
-                  {(
-                    0.25 * (statsData.user.spentLifetime || 0) +
-                    0.75 * (statsData.user.earnedLifetime || 0)
-                  ).toFixed(2)}
+                  Score: {(statsData.user.courseCredits ?? 3.5).toFixed(2)}
                 </li>
               </ul>
             ) : (

@@ -1,6 +1,6 @@
 {
   "name": "social-credit",
-  "version": "0.8.0-beta",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -14,7 +14,9 @@
     "seed-marketplace": "tsx scripts/seed-marketplace.ts",
     "backfill-ranks": "tsx scripts/backfill-ranks.ts",
     "backfill-stats": "tsx scripts/backfill-stats.ts",
-    "backfill-earned": "tsx scripts/backfill-earned-lifetime.ts"
+    "backfill-earned": "tsx scripts/backfill-earned-lifetime.ts",
+    "backfill-course-credits": "tsx scripts/backfill-course-credits.ts",
+    "test-course-credits": "tsx scripts/test-course-credits.ts"
   },
   "dependencies": {
     "@tabler/icons-react": "^3.34.1",
