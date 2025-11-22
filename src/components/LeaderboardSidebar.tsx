@@ -53,17 +53,6 @@ export default function LeaderboardSidebar({
   const items = (leaderboardData?.users || []) as LeaderboardEntryData[];
   const errorMessage = error?.message || null;
 
-  const [sortBy, setSortBy] = useState<"credits" | "course">("credits");
-
-  const sortedItems = useMemo(() => {
-    if (sortBy === "course") {
-      return [...items].sort(
-        (a, b) => (b.courseCredits ?? 0) - (a.courseCredits ?? 0)
-      );
-    }
-    return items; // Default is already sorted by credits from backend
-  }, [items, sortBy]);
-
   return (
     <aside
       className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col lg:max-h-full max-h-[calc(100vh-8rem)]"
@@ -91,53 +80,9 @@ export default function LeaderboardSidebar({
         >
           Redeemable ☭ for coffee, lab help, or moral support
         </p>
-        <div className="mt-3 flex gap-2">
-          <button
-            onClick={() => setSortBy("credits")}
-            className={`text-[10px] sm:text-xs px-2 py-1 border-2 font-bold uppercase ${
-              sortBy === "credits"
-                ? "bg-[var(--accent)] text-white border-[var(--foreground)]"
-                : "bg-transparent text-[var(--foreground)] border-[var(--foreground)] opacity-60 hover:opacity-100"
-            }`}
-          >
-            By Credits
-          </button>
-          <button
-            onClick={() => setSortBy("course")}
-            className={`text-[10px] sm:text-xs px-2 py-1 border-2 font-bold uppercase ${
-              sortBy === "course"
-                ? "bg-[var(--accent)] text-white border-[var(--foreground)]"
-                : "bg-transparent text-[var(--foreground)] border-[var(--foreground)] opacity-60 hover:opacity-100"
-            }`}
-          >
-            By Score
-          </button>
-        </div>
       </header>
 
-      {/* Filter pills */}
-      <div className="mb-3 flex gap-2 flex-wrap">
-        {(
-          [
-            { key: "kredits", label: "By Kredits" },
-            { key: "active", label: "Most Active" },
-            { key: "topGainers", label: "Top Gainers" },
-            { key: "topLosers", label: "Top Losers" },
-          ] as { key: string; label: string }[]
-        ).map((p) => (
-          <button
-            key={p.key}
-            onClick={() => setFilter(p.key as any)}
-            className={`px-2 py-1 border-2 rounded-none font-mono text-xs ${
-              filter === p.key
-                ? "bg-[var(--accent)] text-[var(--background)] border-[var(--accent)]"
-                : "bg-transparent text-[var(--foreground)] border-[var(--foreground)]"
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+      {/* Content states */}
 
       {/* Content states */}
       {loading && (
@@ -152,15 +97,12 @@ export default function LeaderboardSidebar({
         </div>
       )}
 
-      {!loading && !errorMessage && (
+            {!loading && !errorMessage && (
         <ul
-          className="flex-1 min-h-0 flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto pr-1 pb-4"
-          style={{
-            scrollbarColor: "var(--foreground) transparent",
-            scrollbarWidth: "thin",
-          }}
+          className="flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto"
+          style={{ maxHeight: "50vh" }}
         >
-          {sortedItems.map((u, idx) => {
+          {items.map((u, idx) => {
             const isMe =
               (myId && u._id === myId) ||
               (myUsername && u.handle === myUsername);
@@ -172,7 +114,6 @@ export default function LeaderboardSidebar({
                 highlight={!!isMe}
                 alwaysRow={forceRowEntries}
                 fixedBadgeWidth={fixedBadgeWidth}
-                showCourseCredits={sortBy === "course"}
               />
             );
           })}
