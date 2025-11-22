@@ -1,3 +1,5 @@
+<div align="center">
+
 # Social Credit System
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)
@@ -10,6 +12,8 @@ A gamified university social currency platform designed to foster collaboration
 and community engagement. Features a communist-themed aesthetic with
 user-to-user transfers, a dynamic marketplace, vanity ranks, and a relative
 grading system ("Score") based on community participation.
+
+</div>
 
 ---
 
@@ -30,10 +34,12 @@ grading system ("Score") based on community participation.
 - **Marketplace**: Spend credits on utility items (like Anonymity) or vanity
   upgrades.
 - **Relative Scoring System**:
-  - Calculates a "Score" (Course Credits) from **3.5 to 5.0**.
-  - Based on a weighted formula: `75% Earned Lifetime + 25% Spent Lifetime`.
-  - **Dynamic Curve**: Grades are relative to the top performer in the system
-    (excluding admins/coordinators).
+  - Calculates a "Score" (Course Credits) based on a weighted formula:
+    `75% Earned Lifetime + 25% Spent Lifetime`.
+  - **Statistical Grading**: Grades are determined using a Z-score distribution
+    relative to the community mean and standard deviation.
+  - **Dynamic Curve**: The system automatically adjusts grading thresholds as
+    the economy evolves.
 - **Class Bank**: A central reserve that collects spent credits and can be used
   for community rewards.
 
@@ -50,10 +56,20 @@ grading system ("Score") based on community participation.
 ### Leaderboards & Stats
 
 - **Live Leaderboard**: Real-time tracking of top earners.
-- **Dual Sorting**: Filter leaderboard by **Credits (KK)** or **Score**.
+- **Multi-Filter Leaderboard**: Filter by **Kredits**, **Most Active**, **Top
+  Gainers**, or **Top Losers**.
+- **Fair Activity Tracking**: Admin minting/burning transactions are excluded
+  from user activity counts to ensure fair competition.
 - **Network Graph**: Visual representation of credit flow between users.
 - **Detailed Statistics**: Personal dashboard showing earnings, spending, and
   rank progress.
+
+### Performance & UX
+
+- **Optimized Dashboard**: Lightweight data fetching and efficient user
+  selection for fast load times.
+- **Mobile-First Design**: Responsive leaderboard and UI elements optimized for
+  mobile devices.
 
 ---
 
@@ -130,6 +146,7 @@ management:
 | `npm run seed-marketplace`        | Populates the marketplace with default items (Ranks, Anonymity). |
 | `npm run backfill-course-credits` | Recalculates "Score" for all users based on the dynamic curve.   |
 | `npm run backfill-ranks`          | Updates user ranks based on lifetime earnings.                   |
+| `npm run backfill-tx-counts`      | Recalculates transaction counts (excluding admin actions).       |
 | `npm run test-course-credits`     | Runs unit tests for the scoring algorithm.                       |
 
 ---
