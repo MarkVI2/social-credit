@@ -83,7 +83,7 @@ export const transactionsRouter = createTRPCRouter({
       const dec = await coll.updateOne(
         { ...fromQuery, credits: { $gte: amount } },
         {
-          $inc: { credits: -amount },
+          $inc: { credits: -amount, transactionsSent: 1 },
           $set: { updatedAt: new Date() },
         }
       );
@@ -126,7 +126,11 @@ export const transactionsRouter = createTRPCRouter({
 
       // Credit recipient and track received lifetime
       const inc = await coll.updateOne(toQuery, {
-        $inc: { credits: amount, receivedLifetime: amount },
+        $inc: {
+          credits: amount,
+          receivedLifetime: amount,
+          transactionsReceived: 1,
+        },
         $set: {
           updatedAt: new Date(),
           earnedLifetime: newLifetime,

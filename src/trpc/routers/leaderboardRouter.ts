@@ -62,21 +62,43 @@ export const leaderboardRouter = createTRPCRouter({
             },
           ];
         } else if (filter === "active") {
-          // Most active by transaction count (sent + received)
+          // Most active by transaction count (sent + received), excluding admin transactions
           pipeline = [
             {
               $lookup: {
                 from: "transactionHistory",
-                localField: "username",
-                foreignField: "from",
+                let: { u: "$username" },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $and: [
+                          { $eq: ["$from", "$$u"] },
+                          { $ne: ["$type", "admin"] },
+                        ],
+                      },
+                    },
+                  },
+                ],
                 as: "sentTx",
               },
             },
             {
               $lookup: {
                 from: "transactionHistory",
-                localField: "username",
-                foreignField: "to",
+                let: { u: "$username" },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $and: [
+                          { $eq: ["$to", "$$u"] },
+                          { $ne: ["$type", "admin"] },
+                        ],
+                      },
+                    },
+                  },
+                ],
                 as: "recvTx",
               },
             },
