@@ -1,9 +1,8 @@
 import {
   calculateCourseCredits,
+  calculateRawScore,
   MAX_COURSE_CREDITS,
   MIN_COURSE_CREDITS,
-  MAX_SCORE_THRESHOLD,
-  MIN_SCORE_THRESHOLD,
 } from "../src/lib/ranks";
 
 function assert(condition: boolean, message: string) {
@@ -15,81 +14,58 @@ function assert(condition: boolean, message: string) {
   }
 }
 
-console.log("Running course credits calculation tests...");
+console.log("Running course credits calculation tests (Relative Grading)...");
 
-// Test Case 1: Minimum score
-const minScoreCredits = calculateCourseCredits(0, 0, MAX_SCORE_THRESHOLD);
+// Setup standard distribution
+const MEAN = 100;
+const STD_DEV = 20;
+
+// Test Case 1: Mean score should be 4.25
+// Raw Score = 100 (e.g., earned=100, spent=100 -> 0.75*100 + 0.25*100 = 100)
+const meanCredits = calculateCourseCredits(100, 100, MEAN, STD_DEV);
 assert(
-  minScoreCredits === MIN_COURSE_CREDITS,
-  `Expected minimum credits to be ${MIN_COURSE_CREDITS}, got ${minScoreCredits}`
+  meanCredits === 4.25,
+  `Expected mean credits to be 4.25, got ${meanCredits}`
 );
 
-// Test Case 2: Maximum score (approximate)
-// Score = 0.75 * earned + 0.25 * spent
-// To get max score (680), we can have earned=680, spent=680 -> 0.75*680 + 0.25*680 = 680
-const maxScoreCredits = calculateCourseCredits(
-  MAX_SCORE_THRESHOLD,
-  MAX_SCORE_THRESHOLD,
-  MAX_SCORE_THRESHOLD
-);
+// Test Case 2: +2 StdDev (Score = 140) should be 5.00
+// Z = (140 - 100) / 20 = 2
+// Grade = 4.25 + 2 * 0.375 = 4.25 + 0.75 = 5.00
+const plus2SDCredits = calculateCourseCredits(140, 140, MEAN, STD_DEV);
 assert(
-  maxScoreCredits === MAX_COURSE_CREDITS,
-  `Expected maximum credits to be ${MAX_COURSE_CREDITS}, got ${maxScoreCredits}`
+  plus2SDCredits === 5.0,
+  `Expected +2SD credits to be 5.00, got ${plus2SDCredits}`
 );
 
-// Test Case 3: Mid-range score
-// Let's pick a score exactly in the middle: (680 + 15) / 2 = 347.5
-// 347.5 = 0.75 * E + 0.25 * S. Let's say S = E. E = 347.5
-const midCredits = calculateCourseCredits(347.5, 347.5, MAX_SCORE_THRESHOLD);
-// Expected: 3.5 + (347.5 - 15) / (680 - 15) * (5.0 - 3.5)
-// 3.5 + 332.5 / 665 * 1.5 = 3.5 + 0.5 * 1.5 = 3.5 + 0.75 = 4.25
+// Test Case 3: -2 StdDev (Score = 60) should be 3.50
+// Z = (60 - 100) / 20 = -2
+// Grade = 4.25 - 2 * 0.375 = 4.25 - 0.75 = 3.50
+const minus2SDCredits = calculateCourseCredits(60, 60, MEAN, STD_DEV);
 assert(
-  midCredits === 4.25,
-  `Expected mid-range credits to be 4.25, got ${midCredits}`
+  minus2SDCredits === 3.5,
+  `Expected -2SD credits to be 3.50, got ${minus2SDCredits}`
 );
 
-// Test Case 4: Just below max
-// Use a value that won't round up to 5.00
-const nearMaxCredits = calculateCourseCredits(
-  MAX_SCORE_THRESHOLD - 10,
-  MAX_SCORE_THRESHOLD - 10,
-  MAX_SCORE_THRESHOLD
-);
+// Test Case 4: Extreme High (Score = 200) should be clamped to 5.00
+const highCredits = calculateCourseCredits(200, 200, MEAN, STD_DEV);
 assert(
-  nearMaxCredits < MAX_COURSE_CREDITS,
-  `Expected credits (${nearMaxCredits}) to be less than max`
-);
-assert(nearMaxCredits > 4.9, "Expected credits to be close to max");
-
-// Test Case 5: Just above min
-const nearMinCredits = calculateCourseCredits(20, 0, MAX_SCORE_THRESHOLD); // Score = 15
-// 0.75 * 20 + 0 = 15. This is exactly min threshold.
-assert(
-  calculateCourseCredits(20, 0, MAX_SCORE_THRESHOLD) === MIN_COURSE_CREDITS,
-  "Score 15 should be min credits"
+  highCredits === 5.0,
+  `Expected high credits to be clamped to 5.00, got ${highCredits}`
 );
 
-const slightlyAboveMin = calculateCourseCredits(21, 0, MAX_SCORE_THRESHOLD); // Score = 15.75
-// 3.5 + (15.75 - 15) / 665 * 1.5
-// 3.5 + 0.75 / 665 * 1.5 ~= 3.501... -> 3.50
-// Wait, toFixed(2) might round.
-// 0.75 / 665 * 1.5 = 0.00169...
-// 3.5 + 0.00169 = 3.50169 -> 3.50
-assert(slightlyAboveMin >= 3.5, "Should be at least 3.5");
-
-// Test Case 6: Dynamic Max Score
-const dynamicMax = 1000;
-const dynamicMaxCredits = calculateCourseCredits(1000, 1000, dynamicMax);
+// Test Case 5: Extreme Low (Score = 0) should be clamped to 3.50
+const lowCredits = calculateCourseCredits(0, 0, MEAN, STD_DEV);
 assert(
-  dynamicMaxCredits === MAX_COURSE_CREDITS,
-  `Expected dynamic max credits to be ${MAX_COURSE_CREDITS}, got ${dynamicMaxCredits}`
+  lowCredits === 3.5,
+  `Expected low credits to be clamped to 3.50, got ${lowCredits}`
 );
 
-const dynamicMidCredits = calculateCourseCredits(507.5, 507.5, dynamicMax);
-// Midpoint between 15 and 1000 is (1000+15)/2 = 507.5
+// Test Case 6: Zero StdDev (No variation)
+// Everyone should get 4.25
+const noVarCredits = calculateCourseCredits(100, 100, 100, 0);
 assert(
-  dynamicMidCredits === 4.25,
-  `Expected dynamic mid credits to be 4.25, got ${dynamicMidCredits}`
+  noVarCredits === 4.25,
+  `Expected no variation credits to be 4.25, got ${noVarCredits}`
 );
 
 console.log("All tests passed!");

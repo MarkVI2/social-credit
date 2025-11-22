@@ -2,6 +2,7 @@ import "dotenv/config";
 import { getDatabase } from "../src/lib/mongodb";
 import {
   calculateCourseCredits,
+  calculateRawScore,
   IGNORED_USERS_FOR_GLOBAL_MAX,
 } from "../src/lib/ranks";
 
@@ -10,42 +11,48 @@ async function main() {
   const users = db.collection("userinformation");
   const system = db.collection("systemAccounts");
 
-  console.log("Fetching all users to determine max score...");
+  console.log("Fetching all users to calculate stats...");
   const allUsers = await users.find({}).toArray();
 
-  let maxScore = 0;
-  let maxScoreUser = "Unknown";
-  const userScores = new Map<string, number>();
+  let count = 0;
+  let sum = 0;
+  let sumSq = 0;
 
-  // 1. Calculate all scores and find max (excluding ignored users)
+  // 1. Calculate stats (excluding ignored users)
   for (const user of allUsers) {
     const earned = user.earnedLifetime ?? 20;
     const spent = user.spentLifetime ?? 0;
-    const score = 0.75 * earned + 0.25 * spent;
-    userScores.set(user._id.toString(), score);
+    const rawScore = calculateRawScore(earned, spent);
 
     const isIgnored =
       IGNORED_USERS_FOR_GLOBAL_MAX.includes(user.username) ||
       IGNORED_USERS_FOR_GLOBAL_MAX.includes(user.email);
 
-    if (!isIgnored && score > maxScore) {
-      maxScore = score;
-      maxScoreUser = user.username || user.email || "Unknown";
+    if (!isIgnored) {
+      count++;
+      sum += rawScore;
+      sumSq += rawScore * rawScore;
     }
   }
 
-  // Ensure maxScore is at least the minimum threshold (15) to avoid weird scaling
-  // If everyone is new (score 15), maxScore is 15.
-  if (maxScore < 15) maxScore = 15;
+  const mean = count > 0 ? sum / count : 0;
+  const variance = count > 0 ? sumSq / count - mean * mean : 0;
+  const stdDev = Math.sqrt(Math.max(0, variance));
 
-  console.log(`Global Max Score found: ${maxScore} (held by ${maxScoreUser})`);
+  console.log(
+    `Stats calculated: Count=${count}, Mean=${mean.toFixed(
+      2
+    )}, StdDev=${stdDev.toFixed(2)}`
+  );
 
-  // 2. Save max score to config
+  // 2. Save stats to config
   await system.updateOne(
     { accountType: "globalConfig" },
     {
       $set: {
-        maxScore: maxScore,
+        statsCount: count,
+        statsSum: sum,
+        statsSumSq: sumSq,
         updatedAt: new Date(),
       },
       $setOnInsert: {
@@ -62,7 +69,7 @@ async function main() {
   for (const user of allUsers) {
     const earned = user.earnedLifetime ?? 20;
     const spent = user.spentLifetime ?? 0;
-    const courseCredits = calculateCourseCredits(earned, spent, maxScore);
+    const courseCredits = calculateCourseCredits(earned, spent, mean, stdDev);
 
     await users.updateOne(
       { _id: user._id },

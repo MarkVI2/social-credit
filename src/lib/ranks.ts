@@ -38,23 +38,36 @@ export const IGNORED_USERS_FOR_GLOBAL_MAX = [
   "yayati.gupta@mahindrauniversity.edu.in",
 ];
 
+export function calculateRawScore(
+  earnedLifetime: number = 0,
+  spentLifetime: number = 0
+): number {
+  return 0.75 * earnedLifetime + 0.25 * spentLifetime;
+}
+
 export function calculateCourseCredits(
   earnedLifetime: number = 0,
   spentLifetime: number = 0,
-  maxThreshold: number = MAX_SCORE_THRESHOLD
+  mean: number = 15,
+  stdDev: number = 10
 ): number {
-  const score = 0.75 * earnedLifetime + 0.25 * spentLifetime;
+  const rawScore = calculateRawScore(earnedLifetime, spentLifetime);
 
-  if (score <= MIN_SCORE_THRESHOLD) return MIN_COURSE_CREDITS;
-  if (score >= maxThreshold) return MAX_COURSE_CREDITS;
+  // If no variation yet, everyone gets the median grade
+  if (stdDev === 0) return 4.25;
 
-  const range = maxThreshold - MIN_SCORE_THRESHOLD;
-  // Avoid division by zero if maxThreshold equals MIN_SCORE_THRESHOLD
-  if (range <= 0) return MAX_COURSE_CREDITS;
+  // Z-score calculation
+  const z = (rawScore - mean) / stdDev;
 
-  const progress = (score - MIN_SCORE_THRESHOLD) / range;
-  const credits =
-    MIN_COURSE_CREDITS + progress * (MAX_COURSE_CREDITS - MIN_COURSE_CREDITS);
+  // Map Z-score to grade:
+  // Mean (Z=0) -> 4.25
+  // +2 SD (Z=2) -> 5.00
+  // -2 SD (Z=-2) -> 3.50
+  // Scale factor = (5.0 - 4.25) / 2 = 0.375
+  let credits = 4.25 + z * 0.375;
+
+  // Clamp to valid range
+  credits = Math.max(MIN_COURSE_CREDITS, Math.min(MAX_COURSE_CREDITS, credits));
 
   return Number(credits.toFixed(2));
 }
