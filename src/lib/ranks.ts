@@ -66,6 +66,19 @@ export function calculateCourseCredits(
   // Scale factor = (5.0 - 4.25) / 2 = 0.375
   let credits = 4.25 + z * 0.375;
 
+  // Special handling for the "base" population (score 15)
+  // If a significant portion of users are at the minimum score (15),
+  // and the mean is close to 15, the Z-score for 15 might result in a grade
+  // significantly higher than 3.5 (e.g., 3.9 or 4.0).
+  // To ensure a proper spread, we can enforce that the raw minimum score (15)
+  // maps closer to the minimum grade (3.5), OR we accept that "average" is 4.25.
+  //
+  // Given the current distribution (Mean ~16.8, Mode=15), a score of 15 gives:
+  // Z = (15 - 16.8) / 2.31 = -0.78
+  // Grade = 4.25 + (-0.78 * 0.375) = 4.25 - 0.29 = 3.96
+  // This seems fair: if you are slightly below average, you get ~3.96.
+  // You only get 3.5 if you are truly far below the pack (Z = -2).
+
   // Clamp to valid range
   credits = Math.max(MIN_COURSE_CREDITS, Math.min(MAX_COURSE_CREDITS, credits));
 
