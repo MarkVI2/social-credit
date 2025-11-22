@@ -55,7 +55,7 @@ export default function LeaderboardSidebar({
 
   return (
     <aside
-      className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col lg:max-h-full max-h-[calc(100vh-8rem)]"
+      className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col lg:max-h-none max-h-[50vh]"
       style={{
         borderColor: "var(--foreground)",
         background: "var(--background)",
@@ -120,10 +120,7 @@ export default function LeaderboardSidebar({
       )}
 
       {!loading && !errorMessage && (
-        <ul
-          className="flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto"
-          style={{ maxHeight: "50vh" }}
-        >
+        <ul className="flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto flex-1 min-h-0">
           {items.map((u, idx) => {
             const isMe =
               (myId && u._id === myId) ||

@@ -72,10 +72,12 @@ export default function DashboardPage() {
     []
   );
 
-  const greeting = useMemo(() => {
+  const [greeting, setGreeting] = useState<string>("");
+
+  useEffect(() => {
     const name = me?.username || "User";
     const msg = greetings[Math.floor(Math.random() * greetings.length)];
-    return msg.replace("{name}", name);
+    setGreeting(msg.replace("{name}", name));
   }, [greetings, me?.username]);
 
   // Validation state
