@@ -4,6 +4,7 @@ import { Oswald } from "next/font/google";
 import LeaderboardEntry, { LeaderboardEntryData } from "./LeaderboardEntry";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { trpc } from "@/trpc/client";
+import { useState, useMemo } from "react";
 
 const oswald = Oswald({ subsets: ["latin"], weight: ["500", "600", "700"] });
 
@@ -26,6 +27,17 @@ export default function LeaderboardSidebar({
 
   const items = (leaderboardData?.users || []) as LeaderboardEntryData[];
   const errorMessage = error?.message || null;
+
+  const [sortBy, setSortBy] = useState<"credits" | "course">("credits");
+
+  const sortedItems = useMemo(() => {
+    if (sortBy === "course") {
+      return [...items].sort(
+        (a, b) => (b.courseCredits ?? 0) - (a.courseCredits ?? 0)
+      );
+    }
+    return items; // Default is already sorted by credits from backend
+  }, [items, sortBy]);
 
   return (
     <aside
@@ -54,6 +66,28 @@ export default function LeaderboardSidebar({
         >
           Redeemable ☭ for coffee, lab help, or moral support
         </p>
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={() => setSortBy("credits")}
+            className={`text-[10px] sm:text-xs px-2 py-1 border-2 font-bold uppercase ${
+              sortBy === "credits"
+                ? "bg-[var(--accent)] text-white border-[var(--foreground)]"
+                : "bg-transparent text-[var(--foreground)] border-[var(--foreground)] opacity-60 hover:opacity-100"
+            }`}
+          >
+            By Credits
+          </button>
+          <button
+            onClick={() => setSortBy("course")}
+            className={`text-[10px] sm:text-xs px-2 py-1 border-2 font-bold uppercase ${
+              sortBy === "course"
+                ? "bg-[var(--accent)] text-white border-[var(--foreground)]"
+                : "bg-transparent text-[var(--foreground)] border-[var(--foreground)] opacity-60 hover:opacity-100"
+            }`}
+          >
+            By Score
+          </button>
+        </div>
       </header>
 
       {/* Content states */}
@@ -74,7 +108,7 @@ export default function LeaderboardSidebar({
           className="flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto"
           style={{ maxHeight: "50vh" }}
         >
-          {items.map((u, idx) => {
+          {sortedItems.map((u, idx) => {
             const isMe =
               (myId && u._id === myId) ||
               (myUsername && u.handle === myUsername);
@@ -86,6 +120,7 @@ export default function LeaderboardSidebar({
                 highlight={!!isMe}
                 alwaysRow={forceRowEntries}
                 fixedBadgeWidth={fixedBadgeWidth}
+                showCourseCredits={sortBy === "course"}
               />
             );
           })}

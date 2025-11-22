@@ -1,9 +1,10 @@
 import bcrypt from "bcryptjs";
 import { getDatabase } from "@/lib/mongodb";
 import { User, UserInput } from "@/types/user";
-import { getVanityRank } from "@/lib/ranks";
+import { getVanityRank, calculateCourseCredits } from "@/lib/ranks";
 import crypto from "crypto";
 import { sendVerificationEmail } from "./mailService";
+import { getGlobalMaxScore } from "./configService";
 
 export class UserService {
   private static async getCollection() {
@@ -49,6 +50,8 @@ export class UserService {
       // Hash the password
       const hashedPassword = await this.hashPassword(userData.password);
 
+      const globalMax = await getGlobalMaxScore();
+
       // Create user object
       const token = crypto.randomBytes(24).toString("hex");
       const user: Omit<User, "_id"> = {
@@ -57,6 +60,8 @@ export class UserService {
         password: hashedPassword,
         credits: 20,
         earnedLifetime: 20,
+        spentLifetime: 0,
+        courseCredits: calculateCourseCredits(20, 0, globalMax),
         rank: getVanityRank(20),
         role: "user",
         emailVerified: false,

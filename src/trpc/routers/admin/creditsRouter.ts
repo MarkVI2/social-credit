@@ -11,7 +11,15 @@ import clientPromise from "@/lib/mongodb";
 import type { User } from "@/types/user";
 import { ObjectId } from "mongodb";
 import { broadcastLeaderboardUpdate } from "../leaderboardRouter";
-import { getVanityRank } from "@/lib/ranks";
+import {
+  getVanityRank,
+  calculateCourseCredits,
+  IGNORED_USERS_FOR_GLOBAL_MAX,
+} from "@/lib/ranks";
+import {
+  getGlobalMaxScore,
+  updateGlobalMaxScore,
+} from "@/services/configService";
 
 // Type for system accounts
 interface SystemAccount {
@@ -72,6 +80,26 @@ export const creditsRouter = createTRPCRouter({
               }
               const newLifetime = (target.earnedLifetime ?? 20) + amount;
               const newRank = getVanityRank(newLifetime);
+
+              let globalMax = await getGlobalMaxScore();
+              const myScore =
+                0.75 * newLifetime + 0.25 * (target.spentLifetime ?? 0);
+
+              const isIgnored =
+                IGNORED_USERS_FOR_GLOBAL_MAX.includes(target.username) ||
+                IGNORED_USERS_FOR_GLOBAL_MAX.includes(target.email);
+
+              if (!isIgnored && myScore > globalMax) {
+                globalMax = myScore;
+                await updateGlobalMaxScore(globalMax);
+              }
+
+              const newCourseCredits = calculateCourseCredits(
+                newLifetime,
+                target.spentLifetime ?? 0,
+                globalMax
+              );
+
               const inc = await users.updateOne(
                 { _id: target._id },
                 {
@@ -80,6 +108,7 @@ export const creditsRouter = createTRPCRouter({
                     updatedAt: new Date(),
                     earnedLifetime: newLifetime,
                     rank: newRank,
+                    courseCredits: newCourseCredits,
                   },
                 },
                 { session }
@@ -122,6 +151,26 @@ export const creditsRouter = createTRPCRouter({
               }
               const newLifetime = (target.earnedLifetime ?? 20) + amount;
               const newRank = getVanityRank(newLifetime);
+
+              let globalMax = await getGlobalMaxScore();
+              const myScore =
+                0.75 * newLifetime + 0.25 * (target.spentLifetime ?? 0);
+
+              const isIgnored =
+                IGNORED_USERS_FOR_GLOBAL_MAX.includes(target.username) ||
+                IGNORED_USERS_FOR_GLOBAL_MAX.includes(target.email);
+
+              if (!isIgnored && myScore > globalMax) {
+                globalMax = myScore;
+                await updateGlobalMaxScore(globalMax);
+              }
+
+              const newCourseCredits = calculateCourseCredits(
+                newLifetime,
+                target.spentLifetime ?? 0,
+                globalMax
+              );
+
               const inc = await users.updateOne(
                 { _id: target._id },
                 {
@@ -130,6 +179,7 @@ export const creditsRouter = createTRPCRouter({
                     updatedAt: new Date(),
                     earnedLifetime: newLifetime,
                     rank: newRank,
+                    courseCredits: newCourseCredits,
                   },
                 },
                 { session }

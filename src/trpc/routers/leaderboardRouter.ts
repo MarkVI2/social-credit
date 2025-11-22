@@ -13,6 +13,7 @@ interface LeaderboardUser {
   avatarUrl?: string;
   rank?: string;
   earnedLifetime?: number;
+  courseCredits?: number;
 }
 
 // Event emitter for leaderboard updates
@@ -45,6 +46,7 @@ export const leaderboardRouter = createTRPCRouter({
             avatarUrl: 1,
             rank: 1,
             earnedLifetime: 1,
+            courseCredits: 1,
           },
         },
       ];
@@ -84,6 +86,7 @@ export const leaderboardRouter = createTRPCRouter({
                   avatarUrl: 1,
                   rank: 1,
                   earnedLifetime: 1,
+                  courseCredits: 1,
                 },
               },
             ];

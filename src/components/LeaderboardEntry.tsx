@@ -12,6 +12,7 @@ export interface LeaderboardEntryData {
   kollaborationKredits: number;
   avatarUrl?: string;
   rank?: string;
+  courseCredits?: number;
 }
 
 export function LeaderboardEntry({
@@ -20,6 +21,7 @@ export function LeaderboardEntry({
   highlight,
   alwaysRow = false,
   fixedBadgeWidth = false,
+  showCourseCredits = false,
 }: {
   user: LeaderboardEntryData;
   rank: number;
@@ -28,6 +30,7 @@ export function LeaderboardEntry({
   alwaysRow?: boolean;
   /** When true: apply a fixed width to the credits badge for consistent right alignment */
   fixedBadgeWidth?: boolean;
+  showCourseCredits?: boolean;
 }) {
   const displayName = useMemo(() => {
     const base = (user.name || user.handle || "Unknown").trim();
@@ -83,7 +86,10 @@ export function LeaderboardEntry({
         }}
         aria-label="Kollaboration Kredits"
       >
-        {user.kollaborationKredits} KK
+        {showCourseCredits
+          ? (user.courseCredits ?? 3.5).toFixed(2)
+          : Math.trunc(user.kollaborationKredits)}{" "}
+        {showCourseCredits ? "Score" : "KK"}
       </div>
     </li>
   );

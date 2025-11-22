@@ -24,6 +24,7 @@ export interface User {
   timeoutUntil?: Date; // when in the future, user is on timeout and cannot perform transactions/purchases
   transactionsSent?: number; // Total number of transactions sent by user
   transactionsReceived?: number; // Total number of transactions received by user
+  courseCredits?: number; // Calculated course credits (3.5 - 5.0)
   // Token-based session (localStorage/cookie). Store only hash in DB.
   sessionTokenHash?: string;
   sessionTokenExpiresAt?: Date;

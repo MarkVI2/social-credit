@@ -22,6 +22,43 @@ export const RANKS: VanityRank[] = [
   { min: 680, name: "People's Hero" },
 ];
 
+export const MAX_COURSE_CREDITS = 5.0;
+export const MIN_COURSE_CREDITS = 3.5;
+// Based on People's Hero rank (680) and initial grant (20)
+// Score = 0.75 * earned + 0.25 * spent
+// Min Score = 0.75 * 20 + 0.25 * 0 = 15
+// Max Score (approx) = 0.75 * 680 + 0.25 * 680 = 680 (if all spent)
+// or 0.75 * 680 + 0.25 * 0 = 510 (if none spent)
+// We'll use 680 as the max threshold for 5.0
+export const MAX_SCORE_THRESHOLD = 680; // Default fallback
+export const MIN_SCORE_THRESHOLD = 15;
+
+export const IGNORED_USERS_FOR_GLOBAL_MAX = [
+  "yytgpt",
+  "yayati.gupta@mahindrauniversity.edu.in",
+];
+
+export function calculateCourseCredits(
+  earnedLifetime: number = 0,
+  spentLifetime: number = 0,
+  maxThreshold: number = MAX_SCORE_THRESHOLD
+): number {
+  const score = 0.75 * earnedLifetime + 0.25 * spentLifetime;
+
+  if (score <= MIN_SCORE_THRESHOLD) return MIN_COURSE_CREDITS;
+  if (score >= maxThreshold) return MAX_COURSE_CREDITS;
+
+  const range = maxThreshold - MIN_SCORE_THRESHOLD;
+  // Avoid division by zero if maxThreshold equals MIN_SCORE_THRESHOLD
+  if (range <= 0) return MAX_COURSE_CREDITS;
+
+  const progress = (score - MIN_SCORE_THRESHOLD) / range;
+  const credits =
+    MIN_COURSE_CREDITS + progress * (MAX_COURSE_CREDITS - MIN_COURSE_CREDITS);
+
+  return Number(credits.toFixed(2));
+}
+
 export function getVanityRank(
   earnedLifetime: number | undefined | null
 ): string {
