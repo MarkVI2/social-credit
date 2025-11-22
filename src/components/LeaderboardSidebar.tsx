@@ -3,7 +3,7 @@
 import { Oswald } from "next/font/google";
 import LeaderboardEntry, { LeaderboardEntryData } from "./LeaderboardEntry";
 import { trpc } from "@/trpc/client";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useMe } from "@/hooks/useMe";
 
 const oswald = Oswald({ subsets: ["latin"], weight: ["500", "600", "700"] });
@@ -81,8 +81,6 @@ export default function LeaderboardSidebar({
           Redeemable ☭ for coffee, lab help, or moral support
         </p>
       </header>
-
-      {/* Content states */}
 
       {/* Content states */}
       {loading && (
