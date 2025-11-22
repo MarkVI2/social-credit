@@ -13,6 +13,8 @@ export interface LeaderboardEntryData {
   avatarUrl?: string;
   rank?: string;
   courseCredits?: number;
+  txCount?: number;
+  netGain?: number;
 }
 
 export function LeaderboardEntry({

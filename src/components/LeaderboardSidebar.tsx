@@ -4,6 +4,7 @@ import { Oswald } from "next/font/google";
 import LeaderboardEntry, { LeaderboardEntryData } from "./LeaderboardEntry";
 import { trpc } from "@/trpc/client";
 import { useState, useMemo } from "react";
+import { useMe } from "@/hooks/useMe";
 
 const oswald = Oswald({ subsets: ["latin"], weight: ["500", "600", "700"] });
 

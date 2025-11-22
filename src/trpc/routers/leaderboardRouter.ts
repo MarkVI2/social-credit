@@ -27,43 +27,20 @@ export const broadcastLeaderboardUpdate = () => {
 
 export const leaderboardRouter = createTRPCRouter({
   // Get current leaderboard data
-  getLeaderboard: publicProcedure.query(async () => {
-    try {
-      const db = await getDatabase();
-      const pipeline = [
-        {
-          $addFields: { creditsSafe: { $ifNull: ["$credits", 0] } },
-        },
-        { $sort: { creditsSafe: -1 } },
-        {
-          $project: {
-            _id: 1,
-            name: { $ifNull: ["$name", "$username"] },
-            handle: { $ifNull: ["$handle", "$username"] },
-            // Keep field name for UI compatibility
-            kollaborationKredits: "$creditsSafe",
-            // Also include explicit credits field for future use
-            credits: "$creditsSafe",
-            avatarUrl: 1,
-            rank: 1,
-            earnedLifetime: 1,
-            courseCredits: 1,
-          },
-        },
-      ];
-
-      const users = await db
-        .collection("userinformation")
-        .aggregate(pipeline)
-        .toArray();
-
-      return { success: true, users };
-    } catch (error) {
-      console.error("Error fetching leaderboard:", error);
-      throw new Error("Error fetching leaderboard");
-    }
-  }),
-
+  getLeaderboard: publicProcedure
+    .input(
+      z
+        .object({
+          filter: z
+            .enum(["kredits", "active", "topGainers", "topLosers"])
+            .optional(),
+        })
+        .optional()
+    )
+    .query(async ({ input }) => {
+      try {
+        const db = await getDatabase();
+        const filter = input?.filter || "kredits";
         let pipeline: any[] = [];
 
         if (filter === "kredits") {
@@ -80,6 +57,7 @@ export const leaderboardRouter = createTRPCRouter({
                 avatarUrl: 1,
                 rank: 1,
                 earnedLifetime: 1,
+                courseCredits: 1,
               },
             },
           ];
@@ -107,18 +85,54 @@ export const leaderboardRouter = createTRPCRouter({
                 txCount: { $add: [{ $size: "$sentTx" }, { $size: "$recvTx" }] },
                 kollaborationKredits: { $ifNull: ["$credits", 0] },
               },
-              { $sort: { creditsSafe: -1 } },
-              {
-                $project: {
-                  _id: 1,
-                  name: { $ifNull: ["$name", "$username"] },
-                  handle: { $ifNull: ["$handle", "$username"] },
-                  kollaborationKredits: "$creditsSafe",
-                  credits: "$creditsSafe",
-                  avatarUrl: 1,
-                  rank: 1,
-                  earnedLifetime: 1,
-                  courseCredits: 1,
+            },
+            { $sort: { txCount: -1 } },
+            {
+              $project: {
+                _id: 1,
+                name: { $ifNull: ["$name", "$username"] },
+                handle: { $ifNull: ["$handle", "$username"] },
+                kollaborationKredits: 1,
+                credits: "$kollaborationKredits",
+                txCount: 1,
+                avatarUrl: 1,
+                rank: 1,
+                courseCredits: 1,
+              },
+            },
+          ];
+        } else if (filter === "topGainers" || filter === "topLosers") {
+          // Net gain/loss (received - sent)
+          pipeline = [
+            {
+              $lookup: {
+                from: "transactionHistory",
+                let: { uname: "$username" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$to", "$$uname"] } } },
+                  { $group: { _id: null, received: { $sum: "$amount" } } },
+                ],
+                as: "receivedAgg",
+              },
+            },
+            {
+              $lookup: {
+                from: "transactionHistory",
+                let: { uname: "$username" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$from", "$$uname"] } } },
+                  { $group: { _id: null, sent: { $sum: "$amount" } } },
+                ],
+                as: "sentAgg",
+              },
+            },
+            {
+              $addFields: {
+                receivedTotal: {
+                  $ifNull: [{ $arrayElemAt: ["$receivedAgg.received", 0] }, 0],
+                },
+                sentTotal: {
+                  $ifNull: [{ $arrayElemAt: ["$sentAgg.sent", 0] }, 0],
                 },
               },
             },
@@ -139,6 +153,7 @@ export const leaderboardRouter = createTRPCRouter({
                 netGain: 1,
                 avatarUrl: 1,
                 rank: 1,
+                courseCredits: 1,
               },
             },
           ];
