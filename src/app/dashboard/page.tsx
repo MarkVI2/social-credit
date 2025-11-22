@@ -5,9 +5,7 @@ import { useRouter } from "next/navigation";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
 import SettingsModal from "@/components/SettingsModal";
 import { IconLogout } from "@tabler/icons-react";
-import { useUsers } from "@/hooks/useUsers";
 import { useTransactions } from "@/hooks/useTransactions";
-import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/trpc/client";
 import { useMe } from "@/hooks/useMe";
 
@@ -28,14 +26,15 @@ export default function DashboardPage() {
   const [showSettings, setShowSettings] = useState(false);
 
   // Use tRPC hooks
-  const { user, isLoading: authLoading, refreshAuth } = useAuth();
-  const { allUsers: users } = useUsers();
   const { transactionHistory, getGlobalHistory, transfer, isTransferring } =
     useTransactions();
 
   // Live user data via tRPC (react-query)
   const utils = trpc.useUtils();
   const meQuery = useMe();
+  const { data: meData, isLoading: meLoading } = meQuery;
+  const me = meData?.user || null;
+
   // Subscribe to leaderboard updates (emitted on any credit change)
   trpc.leaderboard.onUpdate.useSubscription(undefined, {
     onData: () => {
@@ -51,24 +50,6 @@ export default function DashboardPage() {
   const globalRecent = (globalHistoryQuery.data?.items ||
     ([] as unknown)) as UserTransaction[];
 
-  // Map emails to usernames for display; keep usernames as-is
-  const emailToUsername = useMemo(() => {
-    const m = new Map<string, string>();
-    users.forEach((u) => m.set(u.email.toLowerCase(), u.username));
-    return m;
-  }, [users]);
-
-  const resolveName = useCallback(
-    (id: string) => {
-      if (!id) return id;
-      if (id.toLowerCase() === "class bank") return "Class Bank";
-      if (id.includes("@")) return emailToUsername.get(id.toLowerCase()) || id;
-      return id; // assume already username
-    },
-    [emailToUsername]
-  );
-
-  const me = meQuery.data?.user || user || null;
   const userInitial = useMemo(
     () => (me?.username ? me.username.charAt(0).toUpperCase() : "?"),
     [me?.username]
@@ -91,21 +72,16 @@ export default function DashboardPage() {
     []
   );
 
-  const greeting = useMemo(() => {
+  const [greeting, setGreeting] = useState<string>("");
+
+  useEffect(() => {
     const name = me?.username || "User";
     const msg = greetings[Math.floor(Math.random() * greetings.length)];
-    return msg.replace("{name}", name);
+    setGreeting(msg.replace("{name}", name));
   }, [greetings, me?.username]);
 
   // Validation state
-  const matchedUser = useMemo(
-    () =>
-      users.find(
-        (u) => u.username === selectedUser || u.email === selectedUser
-      ) || null,
-    [users, selectedUser]
-  );
-  const isValidUser = !!matchedUser;
+  const isValidUser = selectedUser.trim().length > 0;
   const isValidReason = reason.trim().length > 0;
   const canSubmit = isValidUser && isValidReason;
   // Rate limit: only one send every 2 minutes
@@ -120,41 +96,25 @@ export default function DashboardPage() {
 
   // Check authentication
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!meLoading && !me) {
       router.push("/auth/login");
-    } else if (user?.role === "admin") {
+    } else if (me?.role === "admin") {
       router.push("/admin");
     }
-  }, [user, authLoading, router]);
+  }, [me, meLoading, router]);
 
   const handleSend = async () => {
-    const target = users.find(
-      (u) => u.username === selectedUser || u.email === selectedUser
-    );
-    if (!user || !target) return;
+    if (!me || !selectedUser) return;
 
     try {
-      await transfer(target.username, reason);
+      await transfer(selectedUser, reason);
       setReason("");
       // Refresh auth/user to update local credits immediately
-      if (user) {
-        await refreshAuth(user);
-      }
+      utils.user.getMe.invalidate();
     } catch (e) {
       console.error("[Send] Transfer error", e);
     }
   };
-  // const handleRequest = () => {
-  //   const target = users.find(
-  //     (u) => u.username === selectedUser || u.email === selectedUser
-  //   );
-  //   console.log(
-  //     "Request",
-  //     amount,
-  //     "credits from",
-  //     target?.username ?? selectedUser
-  //   );
-  // };
 
   const handleLogout = () => {
     try {
@@ -164,7 +124,7 @@ export default function DashboardPage() {
     router.push("/auth/login");
   };
 
-  if (authLoading || !user) {
+  if (meLoading || !me) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -334,7 +294,7 @@ export default function DashboardPage() {
                   Select User
                 </h3>
                 <input
-                  list="users"
+                  type="text"
                   value={selectedUser}
                   onChange={(e) => setSelectedUser(e.target.value)}
                   className="w-full px-2.5 py-2 sm:px-3.5 sm:py-2.5 lg:px-4 lg:py-3 rounded-none focus:outline-none border-4"
@@ -343,17 +303,9 @@ export default function DashboardPage() {
                     color: "var(--foreground)",
                     borderColor: "var(--foreground)",
                   }}
-                  placeholder="Search by username or email"
+                  placeholder="Enter username or email"
                   required
                 />
-                <datalist id="users">
-                  {users.map((u) => (
-                    <option key={`${u._id}-u`} value={u.username} />
-                  ))}
-                  {users.map((u) => (
-                    <option key={`${u._id}-e`} value={u.email} />
-                  ))}
-                </datalist>
               </div>
             </div>
 
@@ -514,7 +466,9 @@ export default function DashboardPage() {
                             ) : (
                               <>
                                 <span className="text-red-500 font-bold">
-                                  {resolveName(t.from)}
+                                  {t.from === "classBank"
+                                    ? "Class Bank"
+                                    : t.from}
                                 </span>{" "}
                                 has transfered{" "}
                                 <span
@@ -525,7 +479,7 @@ export default function DashboardPage() {
                                 </span>{" "}
                                 to{" "}
                                 <span className="text-red-500 font-bold">
-                                  {resolveName(t.to)}
+                                  {t.to === "classBank" ? "Class Bank" : t.to}
                                 </span>
                                 {t.reason ? (
                                   <>

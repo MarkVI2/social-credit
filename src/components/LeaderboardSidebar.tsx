@@ -3,7 +3,7 @@
 import { Oswald } from "next/font/google";
 import LeaderboardEntry, { LeaderboardEntryData } from "./LeaderboardEntry";
 import { trpc } from "@/trpc/client";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useMe } from "@/hooks/useMe";
 
 const oswald = Oswald({ subsets: ["latin"], weight: ["500", "600", "700"] });
@@ -53,20 +53,9 @@ export default function LeaderboardSidebar({
   const items = (leaderboardData?.users || []) as LeaderboardEntryData[];
   const errorMessage = error?.message || null;
 
-  const [sortBy, setSortBy] = useState<"credits" | "course">("credits");
-
-  const sortedItems = useMemo(() => {
-    if (sortBy === "course") {
-      return [...items].sort(
-        (a, b) => (b.courseCredits ?? 0) - (a.courseCredits ?? 0)
-      );
-    }
-    return items; // Default is already sorted by credits from backend
-  }, [items, sortBy]);
-
   return (
     <aside
-      className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col lg:max-h-full max-h-[calc(100vh-8rem)]"
+      className="w-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col h-[350px] sm:h-[450px] lg:h-full"
       style={{
         borderColor: "var(--foreground)",
         background: "var(--background)",
@@ -91,28 +80,6 @@ export default function LeaderboardSidebar({
         >
           Redeemable ☭ for coffee, lab help, or moral support
         </p>
-        <div className="mt-3 flex gap-2">
-          <button
-            onClick={() => setSortBy("credits")}
-            className={`text-[10px] sm:text-xs px-2 py-1 border-2 font-bold uppercase ${
-              sortBy === "credits"
-                ? "bg-[var(--accent)] text-white border-[var(--foreground)]"
-                : "bg-transparent text-[var(--foreground)] border-[var(--foreground)] opacity-60 hover:opacity-100"
-            }`}
-          >
-            By Credits
-          </button>
-          <button
-            onClick={() => setSortBy("course")}
-            className={`text-[10px] sm:text-xs px-2 py-1 border-2 font-bold uppercase ${
-              sortBy === "course"
-                ? "bg-[var(--accent)] text-white border-[var(--foreground)]"
-                : "bg-transparent text-[var(--foreground)] border-[var(--foreground)] opacity-60 hover:opacity-100"
-            }`}
-          >
-            By Score
-          </button>
-        </div>
       </header>
 
       {/* Filter pills */}
@@ -153,14 +120,8 @@ export default function LeaderboardSidebar({
       )}
 
       {!loading && !errorMessage && (
-        <ul
-          className="flex-1 min-h-0 flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto pr-1 pb-4"
-          style={{
-            scrollbarColor: "var(--foreground) transparent",
-            scrollbarWidth: "thin",
-          }}
-        >
-          {sortedItems.map((u, idx) => {
+        <ul className="flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto flex-1 min-h-0">
+          {items.map((u, idx) => {
             const isMe =
               (myId && u._id === myId) ||
               (myUsername && u.handle === myUsername);
@@ -172,7 +133,6 @@ export default function LeaderboardSidebar({
                 highlight={!!isMe}
                 alwaysRow={forceRowEntries}
                 fixedBadgeWidth={fixedBadgeWidth}
-                showCourseCredits={sortBy === "course"}
               />
             );
           })}

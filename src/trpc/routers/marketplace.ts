@@ -9,11 +9,12 @@ import { logTransaction } from "@/services/transactionService";
 import { classifyItem } from "@/lib/marketplaceUtils";
 import {
   calculateCourseCredits,
+  calculateRawScore,
   IGNORED_USERS_FOR_GLOBAL_MAX,
 } from "@/lib/ranks";
 import {
-  getGlobalMaxScore,
-  updateGlobalMaxScore,
+  getGlobalStats,
+  updateGlobalStatsDelta,
 } from "@/services/configService";
 
 export const marketplaceRouter = createTRPCRouter({
@@ -175,26 +176,29 @@ export const marketplaceRouter = createTRPCRouter({
       }
 
       // Deduct and add to inventory atomically-ish; then credit class bank
-      const newSpentLifetime = (me.spentLifetime ?? 0) + price;
+      const oldSpent = me.spentLifetime ?? 0;
+      const newSpentLifetime = oldSpent + price;
+      const earned = me.earnedLifetime ?? 20;
+
+      const oldRawScore = calculateRawScore(earned, oldSpent);
+      const newRawScore = calculateRawScore(earned, newSpentLifetime);
 
       // Dynamic Course Credits Calculation
-      let globalMax = await getGlobalMaxScore();
-      const myScore =
-        0.75 * (me.earnedLifetime ?? 20) + 0.25 * newSpentLifetime;
-
       const isIgnored =
         IGNORED_USERS_FOR_GLOBAL_MAX.includes(me.username) ||
         IGNORED_USERS_FOR_GLOBAL_MAX.includes(me.email);
 
-      if (!isIgnored && myScore > globalMax) {
-        globalMax = myScore;
-        await updateGlobalMaxScore(globalMax);
+      if (!isIgnored) {
+        await updateGlobalStatsDelta(oldRawScore, newRawScore);
       }
 
+      const { mean, stdDev } = await getGlobalStats();
+
       const newCourseCredits = calculateCourseCredits(
-        me.earnedLifetime ?? 20,
+        earned,
         newSpentLifetime,
-        globalMax
+        mean,
+        stdDev
       );
 
       await users.updateOne(

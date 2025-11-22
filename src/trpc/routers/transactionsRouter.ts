@@ -6,12 +6,13 @@ import { broadcastLeaderboardUpdate } from "./leaderboardRouter";
 import {
   getVanityRank,
   calculateCourseCredits,
+  calculateRawScore,
   IGNORED_USERS_FOR_GLOBAL_MAX,
 } from "@/lib/ranks";
 import { ObjectId } from "mongodb";
 import {
-  getGlobalMaxScore,
-  updateGlobalMaxScore,
+  getGlobalStats,
+  updateGlobalStatsDelta,
 } from "@/services/configService";
 
 export const transactionsRouter = createTRPCRouter({
@@ -82,7 +83,7 @@ export const transactionsRouter = createTRPCRouter({
       const dec = await coll.updateOne(
         { ...fromQuery, credits: { $gte: amount } },
         {
-          $inc: { credits: -amount },
+          $inc: { credits: -amount, transactionsSent: 1 },
           $set: { updatedAt: new Date() },
         }
       );
@@ -97,35 +98,39 @@ export const transactionsRouter = createTRPCRouter({
         throw new Error("Recipient not found");
       }
       // Never fall back to current credits for lifetime; default is initial grant (20)
-      const newLifetime = (toDoc.earnedLifetime ?? 20) + amount;
+      const oldEarned = toDoc.earnedLifetime ?? 20;
+      const oldSpent = toDoc.spentLifetime ?? 0;
+      const oldRawScore = calculateRawScore(oldEarned, oldSpent);
+
+      const newLifetime = oldEarned + amount;
       const newRank = getVanityRank(newLifetime);
+      const newRawScore = calculateRawScore(newLifetime, oldSpent);
 
       // Dynamic Course Credits Calculation
-      let globalMax = await getGlobalMaxScore();
-      const myScore = 0.75 * newLifetime + 0.25 * (toDoc?.spentLifetime ?? 0);
-
-      // If I broke the record, update global max (unless ignored)
       const isIgnored =
         IGNORED_USERS_FOR_GLOBAL_MAX.includes(toDoc.username) ||
         IGNORED_USERS_FOR_GLOBAL_MAX.includes(toDoc.email);
 
-      if (!isIgnored && myScore > globalMax) {
-        globalMax = myScore;
-        await updateGlobalMaxScore(globalMax);
-        // Note: Ideally we should trigger a background job to re-normalize everyone else,
-        // but for now we just ensure the current user is correct relative to the new max.
-        // Other users will be corrected on their next transaction or periodic backfill.
+      if (!isIgnored) {
+        await updateGlobalStatsDelta(oldRawScore, newRawScore);
       }
+
+      const { mean, stdDev } = await getGlobalStats();
 
       const newCourseCredits = calculateCourseCredits(
         newLifetime,
-        toDoc?.spentLifetime ?? 0,
-        globalMax
+        oldSpent,
+        mean,
+        stdDev
       );
 
       // Credit recipient and track received lifetime
       const inc = await coll.updateOne(toQuery, {
-        $inc: { credits: amount, receivedLifetime: amount },
+        $inc: {
+          credits: amount,
+          receivedLifetime: amount,
+          transactionsReceived: 1,
+        },
         $set: {
           updatedAt: new Date(),
           earnedLifetime: newLifetime,

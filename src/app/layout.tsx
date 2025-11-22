@@ -51,6 +51,7 @@ export default async function RootLayout({
       >
         <body
           className={`${inter.variable} ${oswald.variable} ${jbMono.variable} antialiased`}
+          suppressHydrationWarning
         >
           <Prefetcher />
           {children}

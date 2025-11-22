@@ -14,11 +14,12 @@ import { broadcastLeaderboardUpdate } from "../leaderboardRouter";
 import {
   getVanityRank,
   calculateCourseCredits,
+  calculateRawScore,
   IGNORED_USERS_FOR_GLOBAL_MAX,
 } from "@/lib/ranks";
 import {
-  getGlobalMaxScore,
-  updateGlobalMaxScore,
+  getGlobalStats,
+  updateGlobalStatsDelta,
 } from "@/services/configService";
 
 // Type for system accounts
@@ -78,26 +79,29 @@ export const creditsRouter = createTRPCRouter({
               if (dec.matchedCount !== 1) {
                 throw new Error("Insufficient admin balance");
               }
-              const newLifetime = (target.earnedLifetime ?? 20) + amount;
-              const newRank = getVanityRank(newLifetime);
+              const oldEarned = target.earnedLifetime ?? 20;
+              const oldSpent = target.spentLifetime ?? 0;
+              const oldRawScore = calculateRawScore(oldEarned, oldSpent);
 
-              let globalMax = await getGlobalMaxScore();
-              const myScore =
-                0.75 * newLifetime + 0.25 * (target.spentLifetime ?? 0);
+              const newLifetime = oldEarned + amount;
+              const newRank = getVanityRank(newLifetime);
+              const newRawScore = calculateRawScore(newLifetime, oldSpent);
 
               const isIgnored =
                 IGNORED_USERS_FOR_GLOBAL_MAX.includes(target.username) ||
                 IGNORED_USERS_FOR_GLOBAL_MAX.includes(target.email);
 
-              if (!isIgnored && myScore > globalMax) {
-                globalMax = myScore;
-                await updateGlobalMaxScore(globalMax);
+              if (!isIgnored) {
+                await updateGlobalStatsDelta(oldRawScore, newRawScore);
               }
+
+              const { mean, stdDev } = await getGlobalStats();
 
               const newCourseCredits = calculateCourseCredits(
                 newLifetime,
-                target.spentLifetime ?? 0,
-                globalMax
+                oldSpent,
+                mean,
+                stdDev
               );
 
               const inc = await users.updateOne(
@@ -149,26 +153,29 @@ export const creditsRouter = createTRPCRouter({
               if (dec.matchedCount !== 1) {
                 throw new Error("Insufficient class bank balance");
               }
-              const newLifetime = (target.earnedLifetime ?? 20) + amount;
-              const newRank = getVanityRank(newLifetime);
+              const oldEarned = target.earnedLifetime ?? 20;
+              const oldSpent = target.spentLifetime ?? 0;
+              const oldRawScore = calculateRawScore(oldEarned, oldSpent);
 
-              let globalMax = await getGlobalMaxScore();
-              const myScore =
-                0.75 * newLifetime + 0.25 * (target.spentLifetime ?? 0);
+              const newLifetime = oldEarned + amount;
+              const newRank = getVanityRank(newLifetime);
+              const newRawScore = calculateRawScore(newLifetime, oldSpent);
 
               const isIgnored =
                 IGNORED_USERS_FOR_GLOBAL_MAX.includes(target.username) ||
                 IGNORED_USERS_FOR_GLOBAL_MAX.includes(target.email);
 
-              if (!isIgnored && myScore > globalMax) {
-                globalMax = myScore;
-                await updateGlobalMaxScore(globalMax);
+              if (!isIgnored) {
+                await updateGlobalStatsDelta(oldRawScore, newRawScore);
               }
+
+              const { mean, stdDev } = await getGlobalStats();
 
               const newCourseCredits = calculateCourseCredits(
                 newLifetime,
-                target.spentLifetime ?? 0,
-                globalMax
+                oldSpent,
+                mean,
+                stdDev
               );
 
               const inc = await users.updateOne(

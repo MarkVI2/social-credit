@@ -38,23 +38,49 @@ export const IGNORED_USERS_FOR_GLOBAL_MAX = [
   "yayati.gupta@mahindrauniversity.edu.in",
 ];
 
+export function calculateRawScore(
+  earnedLifetime: number = 0,
+  spentLifetime: number = 0
+): number {
+  return 0.75 * earnedLifetime + 0.25 * spentLifetime;
+}
+
 export function calculateCourseCredits(
   earnedLifetime: number = 0,
   spentLifetime: number = 0,
-  maxThreshold: number = MAX_SCORE_THRESHOLD
+  mean: number = 15,
+  stdDev: number = 10
 ): number {
-  const score = 0.75 * earnedLifetime + 0.25 * spentLifetime;
+  const rawScore = calculateRawScore(earnedLifetime, spentLifetime);
 
-  if (score <= MIN_SCORE_THRESHOLD) return MIN_COURSE_CREDITS;
-  if (score >= maxThreshold) return MAX_COURSE_CREDITS;
+  // If no variation yet, everyone gets the median grade
+  if (stdDev === 0) return 4.25;
 
-  const range = maxThreshold - MIN_SCORE_THRESHOLD;
-  // Avoid division by zero if maxThreshold equals MIN_SCORE_THRESHOLD
-  if (range <= 0) return MAX_COURSE_CREDITS;
+  // Z-score calculation
+  const z = (rawScore - mean) / stdDev;
 
-  const progress = (score - MIN_SCORE_THRESHOLD) / range;
-  const credits =
-    MIN_COURSE_CREDITS + progress * (MAX_COURSE_CREDITS - MIN_COURSE_CREDITS);
+  // Map Z-score to grade:
+  // Mean (Z=0) -> 4.25
+  // +2 SD (Z=2) -> 5.00
+  // -2 SD (Z=-2) -> 3.50
+  // Scale factor = (5.0 - 4.25) / 2 = 0.375
+  let credits = 4.25 + z * 0.375;
+
+  // Special handling for the "base" population (score 15)
+  // If a significant portion of users are at the minimum score (15),
+  // and the mean is close to 15, the Z-score for 15 might result in a grade
+  // significantly higher than 3.5 (e.g., 3.9 or 4.0).
+  // To ensure a proper spread, we can enforce that the raw minimum score (15)
+  // maps closer to the minimum grade (3.5), OR we accept that "average" is 4.25.
+  //
+  // Given the current distribution (Mean ~16.8, Mode=15), a score of 15 gives:
+  // Z = (15 - 16.8) / 2.31 = -0.78
+  // Grade = 4.25 + (-0.78 * 0.375) = 4.25 - 0.29 = 3.96
+  // This seems fair: if you are slightly below average, you get ~3.96.
+  // You only get 3.5 if you are truly far below the pack (Z = -2).
+
+  // Clamp to valid range
+  credits = Math.max(MIN_COURSE_CREDITS, Math.min(MAX_COURSE_CREDITS, credits));
 
   return Number(credits.toFixed(2));
 }

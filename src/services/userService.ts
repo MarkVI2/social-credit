@@ -1,10 +1,14 @@
 import bcrypt from "bcryptjs";
 import { getDatabase } from "@/lib/mongodb";
 import { User, UserInput } from "@/types/user";
-import { getVanityRank, calculateCourseCredits } from "@/lib/ranks";
+import {
+  getVanityRank,
+  calculateCourseCredits,
+  calculateRawScore,
+} from "@/lib/ranks";
 import crypto from "crypto";
 import { sendVerificationEmail } from "./mailService";
-import { getGlobalMaxScore } from "./configService";
+import { getGlobalStats, updateGlobalStatsDelta } from "./configService";
 
 export class UserService {
   private static async getCollection() {
@@ -50,7 +54,14 @@ export class UserService {
       // Hash the password
       const hashedPassword = await this.hashPassword(userData.password);
 
-      const globalMax = await getGlobalMaxScore();
+      // Initial stats for new user
+      const initialEarned = 20;
+      const initialSpent = 0;
+      const initialRawScore = calculateRawScore(initialEarned, initialSpent);
+
+      // Update global stats for the new user
+      await updateGlobalStatsDelta(0, initialRawScore, true);
+      const { mean, stdDev } = await getGlobalStats();
 
       // Create user object
       const token = crypto.randomBytes(24).toString("hex");
@@ -58,11 +69,16 @@ export class UserService {
         username: userData.username,
         email: userData.email.toLowerCase(),
         password: hashedPassword,
-        credits: 20,
-        earnedLifetime: 20,
-        spentLifetime: 0,
-        courseCredits: calculateCourseCredits(20, 0, globalMax),
-        rank: getVanityRank(20),
+        credits: initialEarned,
+        earnedLifetime: initialEarned,
+        spentLifetime: initialSpent,
+        courseCredits: calculateCourseCredits(
+          initialEarned,
+          initialSpent,
+          mean,
+          stdDev
+        ),
+        rank: getVanityRank(initialEarned),
         role: "user",
         emailVerified: false,
         verificationToken: token,
