@@ -93,8 +93,11 @@ export const transactionsRouter = createTRPCRouter({
 
       // Credit recipient + increment lifetime and update rank
       const toDoc = await coll.findOne(toQuery);
+      if (!toDoc) {
+        throw new Error("Recipient not found");
+      }
       // Never fall back to current credits for lifetime; default is initial grant (20)
-      const newLifetime = (toDoc?.earnedLifetime ?? 20) + amount;
+      const newLifetime = (toDoc.earnedLifetime ?? 20) + amount;
       const newRank = getVanityRank(newLifetime);
 
       // Dynamic Course Credits Calculation
