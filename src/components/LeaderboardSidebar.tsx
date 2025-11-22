@@ -97,7 +97,7 @@ export default function LeaderboardSidebar({
         </div>
       )}
 
-            {!loading && !errorMessage && (
+      {!loading && !errorMessage && (
         <ul
           className="flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto"
           style={{ maxHeight: "50vh" }}
