@@ -1,4 +1,5 @@
 import React from "react";
+import DOMPurify from "isomorphic-dompurify";
 
 interface Transaction {
   from: string;
@@ -16,20 +17,12 @@ const TransactionEntry: React.FC<{ transaction: Transaction }> = ({
 
   const renderContent = () => {
     if (message) {
-      const parts = message.split(/(\bAnonymous Komrade\b|\b\w+\b)/g);
-      return parts.map((part, index) => {
-        if (part === from || part === to) {
-          return (
-            <span key={index} style={{ color: "red" }}>
-              {part}
-            </span>
-          );
-        }
-        if (part.match(/^\d+cr$/)) {
-          return <strong key={index}>{part}</strong>;
-        }
-        return part;
+      // Sanitize and render HTML produced by message templates
+      const clean = DOMPurify.sanitize(message, {
+        ALLOWED_TAGS: ["span", "b", "strong", "em"],
+        ALLOWED_ATTR: ["class"],
       });
+      return <span dangerouslySetInnerHTML={{ __html: clean }} />;
     }
 
     return (

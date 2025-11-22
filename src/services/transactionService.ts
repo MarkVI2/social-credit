@@ -39,7 +39,7 @@ export async function logTransaction(entry: TransactionLog) {
         const hoursSinceAcquired =
           (now.getTime() - acquiredAt.getTime()) / (1000 * 60 * 60);
         if (hoursSinceAcquired <= 24) {
-          finalEntry.from = "Anonymous Komrade";
+          finalEntry.from = "Anonymous Comrade";
         }
       }
     }

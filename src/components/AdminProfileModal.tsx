@@ -1,28 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { useMe } from "@/hooks/useMe";
 
+type AdminUser = { username: string; email: string } | null;
+
 interface Props {
-  user: { username: string; email: string } | null;
+  adminUser: AdminUser;
   onClose: () => void;
 }
 
-export default function SettingsModal({ user, onClose }: Props) {
+export default function AdminProfileModal({ adminUser, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<
     "settings" | "possessions" | "statistics"
   >("settings");
-  // Fetch user stats for statistics tab
-  const me = useMe();
-  const { data: statsData, isLoading: statsLoading } = trpc.user.getMe.useQuery(
-    undefined,
-    { enabled: !!me.data }
-  );
 
+  // Theme state (moved from SettingsModal)
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") return "light";
-    // 1) Cookie overrides
     const cookieMatch = document.cookie
       .split("; ")
       .find((row) => row.startsWith("theme="));
@@ -31,16 +28,13 @@ export default function SettingsModal({ user, onClose }: Props) {
       | "dark"
       | undefined;
     if (cookieTheme === "dark" || cookieTheme === "light") return cookieTheme;
-    // 2) Local storage fallback
     const ls = (localStorage.getItem("theme") as "light" | "dark") || null;
     if (ls === "dark" || ls === "light") return ls;
-    // 3) Default to light; do not auto-switch based on system preference
     return "light";
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    // Ensure we always set one class and remove the other to avoid conflicts
     if (theme === "dark") {
       root.classList.add("dark");
       root.classList.remove("light");
@@ -48,7 +42,6 @@ export default function SettingsModal({ user, onClose }: Props) {
       root.classList.add("light");
       root.classList.remove("dark");
     }
-    // Persist to cookie for SSR and to localStorage for backward compatibility
     try {
       localStorage.setItem("theme", theme);
     } catch {}
@@ -57,10 +50,16 @@ export default function SettingsModal({ user, onClose }: Props) {
       document.cookie = `theme=${theme}; Path=/; Max-Age=${oneYear}; SameSite=Lax`;
     } catch {}
   }, [theme]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const prev = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.documentElement.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [onClose]);
 
   return (
@@ -91,10 +90,10 @@ export default function SettingsModal({ user, onClose }: Props) {
               className="font-heading text-xl font-extrabold uppercase tracking-wider"
               style={{ color: "var(--accent)" }}
             >
-              Settings
+              Admin Settings
             </h2>
             <p className="font-mono text-xs opacity-80 mt-1">
-              {user?.username} · {user?.email}
+              {adminUser?.username} · {adminUser?.email}
             </p>
           </div>
           <button
@@ -129,18 +128,6 @@ export default function SettingsModal({ user, onClose }: Props) {
             Settings
           </button>
           <button
-            onClick={() => setActiveTab("possessions")}
-            className="font-heading uppercase tracking-wider text-sm pb-1 border-b-4"
-            style={{
-              color: "var(--foreground)",
-              borderColor:
-                activeTab === "possessions" ? "var(--accent)" : "transparent",
-            }}
-            aria-current={activeTab === "possessions"}
-          >
-            Possessions
-          </button>
-          <button
             onClick={() => setActiveTab("statistics")}
             className="font-heading uppercase tracking-wider text-sm pb-1 border-b-4"
             style={{
@@ -152,9 +139,21 @@ export default function SettingsModal({ user, onClose }: Props) {
           >
             Statistics
           </button>
+          <button
+            onClick={() => setActiveTab("possessions")}
+            className="font-heading uppercase tracking-wider text-sm pb-1 border-b-4"
+            style={{
+              color: "var(--foreground)",
+              borderColor:
+                activeTab === "possessions" ? "var(--accent)" : "transparent",
+            }}
+            aria-current={activeTab === "possessions"}
+          >
+            Items Collected
+          </button>
         </div>
 
-        {/* Tab content */}
+        {/* Content */}
         {activeTab === "settings" ? (
           <div className="mt-4 space-y-4">
             <div
@@ -170,7 +169,13 @@ export default function SettingsModal({ user, onClose }: Props) {
               >
                 Profile
               </h3>
-              <ChangePasswordForm email={user?.email || ""} />
+              <div className="mt-2 grid gap-3 text-sm font-mono">
+                <div>
+                  <div className="opacity-70">Username</div>
+                  <div className="font-bold">{adminUser?.username || "—"}</div>
+                </div>
+                <ChangePasswordForm email={adminUser?.email || ""} />
+              </div>
             </div>
 
             <div
@@ -214,25 +219,7 @@ export default function SettingsModal({ user, onClose }: Props) {
           </div>
         ) : activeTab === "statistics" ? (
           <div className="mt-4 space-y-4">
-            {statsLoading ? (
-              <p className="font-mono text-sm">Loading statistics…</p>
-            ) : statsData?.user ? (
-              <ul className="space-y-2 font-mono text-sm">
-                <li>Credits Balance: {statsData.user.credits}</li>
-                <li>Lifetime Earned: {statsData.user.earnedLifetime}</li>
-                <li>Lifetime Spent: {statsData.user.spentLifetime}</li>
-                <li>Credits Received: {statsData.user.receivedLifetime}</li>
-                <li>Transactions Sent: {statsData.user.transactionsSent}</li>
-                <li>
-                  Transactions Received: {statsData.user.transactionsReceived}
-                </li>
-                <li>
-                  Score: {(statsData.user.courseCredits ?? 3.5).toFixed(2)}
-                </li>
-              </ul>
-            ) : (
-              <p className="font-mono text-sm">No statistics available.</p>
-            )}
+            <UserStats />
           </div>
         ) : (
           <div className="mt-4">
@@ -241,6 +228,34 @@ export default function SettingsModal({ user, onClose }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+function UserStats() {
+  const me = useMe();
+  const { data: statsData, isLoading } = trpc.user.getMe.useQuery(undefined, {
+    enabled: !!me.data,
+  });
+  if (isLoading)
+    return <p className="font-mono text-sm">Loading statistics…</p>;
+  const u = statsData?.user;
+  if (!u) return <p className="font-mono text-sm">No statistics available.</p>;
+  return (
+    <ul className="space-y-2 font-mono text-sm">
+      <li>Credits Balance: {u.credits}</li>
+      <li>Lifetime Earned: {u.earnedLifetime}</li>
+      <li>Lifetime Spent: {u.spentLifetime}</li>
+      <li>Credits Received: {u.receivedLifetime}</li>
+      <li>Transactions Sent: {u.transactionsSent}</li>
+      <li>Transactions Received: {u.transactionsReceived}</li>
+      <li>
+        Course Credits:{" "}
+        {(
+          0.25 * (u.spentLifetime || 0) +
+          0.75 * (u.earnedLifetime || 0)
+        ).toFixed(2)}
+      </li>
+    </ul>
   );
 }
 
@@ -359,7 +374,7 @@ function ChangePasswordForm({ email }: { email: string }) {
   };
 
   return (
-    <form onSubmit={onSubmit} className="mt-3 space-y-2">
+    <form onSubmit={onSubmit} className="mt-1 grid gap-2">
       <label className="block text-xs font-semibold">Current Password</label>
       <input
         type="password"

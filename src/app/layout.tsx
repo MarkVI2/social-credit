@@ -3,6 +3,8 @@ import { Inter, Oswald, JetBrains_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { TRPCReactProvider } from "@/trpc/client";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import Prefetcher from "@/components/Prefetcher";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -41,6 +43,7 @@ export default async function RootLayout({
   const theme = cookieStore.get("theme")?.value === "dark" ? "dark" : "light";
   return (
     <TRPCReactProvider>
+      <SpeedInsights />
       <html
         lang="en"
         className={theme === "dark" ? "dark" : "light"}
@@ -49,6 +52,7 @@ export default async function RootLayout({
         <body
           className={`${inter.variable} ${oswald.variable} ${jbMono.variable} antialiased`}
         >
+          <Prefetcher />
           {children}
         </body>
       </html>

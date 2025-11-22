@@ -1,5 +1,5 @@
 "use client";
-import BackHomeButton from "@/components/BackHomeButton";
+import AdminHeader from "@/components/AdminHeader";
 import { trpc } from "@/trpc/client";
 import { useState } from "react";
 
@@ -86,26 +86,10 @@ export default function AdminBankPage() {
       style={{ background: "var(--background)", color: "var(--foreground)" }}
     >
       <div className="mx-auto w-full max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-4">
-        <div
-          className="p-3 sm:p-4 lg:p-5 border-4 rounded-none shadow-card mb-4"
-          style={{
-            background: "var(--background)",
-            borderColor: "var(--foreground)",
-          }}
-        >
-          <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
-            <h1
-              className="font-heading text-xl sm:text-2xl font-extrabold uppercase tracking-wider"
-              style={{ color: "var(--accent)" }}
-            >
-              Bank
-            </h1>
-            <BackHomeButton className="mt-1" />
-          </div>
-          <p className="font-mono text-xs sm:text-sm opacity-80 mt-1">
-            Mint currency, audit transactions, and host class-funded auctions.
-          </p>
-        </div>
+        <AdminHeader
+          title="Bank"
+          description="Mint currency, audit transactions, and host class-funded auctions."
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Mint credits */}

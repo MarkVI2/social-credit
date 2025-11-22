@@ -2,7 +2,6 @@
 
 import { Oswald } from "next/font/google";
 import LeaderboardEntry, { LeaderboardEntryData } from "./LeaderboardEntry";
-import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { trpc } from "@/trpc/client";
 import { useState, useMemo } from "react";
 
@@ -18,12 +17,37 @@ export default function LeaderboardSidebar({
   fixedBadgeWidth?: boolean;
 }) {
   // Fetch current user first to keep hook order stable
-  const me = trpc.user.getMe.useQuery(undefined, { staleTime: 5_000 });
+  const me = useMe();
   const myId =
     (me.data?.user as any)?._id?.toString?.() ?? (me.data?.user as any)?._id;
   const myUsername = (me.data?.user as any)?.username as string | undefined;
 
-  const { data: leaderboardData, isLoading: loading, error } = useLeaderboard();
+  const [filter, setFilter] = useState<
+    "kredits" | "active" | "topGainers" | "topLosers"
+  >("kredits");
+
+  const trpcUtils = trpc.useContext();
+
+  const {
+    data: leaderboardData,
+    isLoading: loading,
+    error,
+  } = trpc.leaderboard.getLeaderboard.useQuery(
+    { filter },
+    { staleTime: 10_000 }
+  );
+
+  // Subscribe to leaderboard updates for the current filter and invalidate automatically
+  trpc.leaderboard.onUpdate.useSubscription(
+    { filter },
+    {
+      onData: (data) => {
+        try {
+          trpcUtils.leaderboard.getLeaderboard.invalidate({ filter } as any);
+        } catch {}
+      },
+    }
+  );
 
   const items = (leaderboardData?.users || []) as LeaderboardEntryData[];
   const errorMessage = error?.message || null;
@@ -41,7 +65,7 @@ export default function LeaderboardSidebar({
 
   return (
     <aside
-      className="w-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm"
+      className="w-full h-full shrink-0 p-3 sm:p-4 lg:p-5 shadow-card-sm flex flex-col lg:max-h-full max-h-[calc(100vh-8rem)]"
       style={{
         borderColor: "var(--foreground)",
         background: "var(--background)",
@@ -51,7 +75,7 @@ export default function LeaderboardSidebar({
       }}
       aria-label="Leaderboard Sidebar"
     >
-      <header className="mb-2 sm:mb-3">
+      <header className="mb-2 sm:mb-3 shrink-0">
         <h2
           className={`${oswald.className} uppercase tracking-wider font-extrabold text-lg sm:text-xl leading-none`}
           style={{ color: "var(--accent)" }}
@@ -90,6 +114,30 @@ export default function LeaderboardSidebar({
         </div>
       </header>
 
+      {/* Filter pills */}
+      <div className="mb-3 flex gap-2 flex-wrap">
+        {(
+          [
+            { key: "kredits", label: "By Kredits" },
+            { key: "active", label: "Most Active" },
+            { key: "topGainers", label: "Top Gainers" },
+            { key: "topLosers", label: "Top Losers" },
+          ] as { key: string; label: string }[]
+        ).map((p) => (
+          <button
+            key={p.key}
+            onClick={() => setFilter(p.key as any)}
+            className={`px-2 py-1 border-2 rounded-none font-mono text-xs ${
+              filter === p.key
+                ? "bg-[var(--accent)] text-[var(--background)] border-[var(--accent)]"
+                : "bg-transparent text-[var(--foreground)] border-[var(--foreground)]"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
       {/* Content states */}
       {loading && (
         <div className="font-mono text-xs py-4">Loading leaderboard…</div>
@@ -105,8 +153,11 @@ export default function LeaderboardSidebar({
 
       {!loading && !errorMessage && (
         <ul
-          className="flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto"
-          style={{ maxHeight: "50vh" }}
+          className="flex-1 min-h-0 flex flex-col gap-2 sm:gap-3 overflow-x-hidden overflow-y-auto pr-1 pb-4"
+          style={{
+            scrollbarColor: "var(--foreground) transparent",
+            scrollbarWidth: "thin",
+          }}
         >
           {sortedItems.map((u, idx) => {
             const isMe =
@@ -126,8 +177,7 @@ export default function LeaderboardSidebar({
           })}
         </ul>
       )}
-
-      <footer className="mt-3 sm:mt-4">
+      <footer className="mt-3 sm:mt-4 shrink-0">
         <p className="text-[10px] sm:text-xs opacity-70 leading-snug">
           Note: No actual ideology was harmed in the making of these credits.
         </p>
