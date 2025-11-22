@@ -82,6 +82,30 @@ export default function LeaderboardSidebar({
         </p>
       </header>
 
+      {/* Filter pills */}
+      <div className="mb-3 flex gap-2 flex-wrap">
+        {(
+          [
+            { key: "kredits", label: "By Kredits" },
+            { key: "active", label: "Most Active" },
+            { key: "topGainers", label: "Top Gainers" },
+            { key: "topLosers", label: "Top Losers" },
+          ] as { key: string; label: string }[]
+        ).map((p) => (
+          <button
+            key={p.key}
+            onClick={() => setFilter(p.key as any)}
+            className={`px-2 py-1 border-2 rounded-none font-mono text-xs ${
+              filter === p.key
+                ? "bg-[var(--accent)] text-[var(--background)] border-[var(--accent)]"
+                : "bg-transparent text-[var(--foreground)] border-[var(--foreground)]"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
       {/* Content states */}
       {loading && (
         <div className="font-mono text-xs py-4">Loading leaderboard…</div>
