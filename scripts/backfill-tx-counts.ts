@@ -6,7 +6,9 @@ async function main() {
   const users = db.collection("userinformation");
   const transactions = db.collection("transactionHistory");
 
-  console.log("Backfilling transaction counts (excluding admin transactions)...");
+  console.log(
+    "Backfilling transaction counts (excluding admin transactions)..."
+  );
   const allUsers = await users.find({}).toArray();
 
   let updatedCount = 0;
@@ -39,7 +41,9 @@ async function main() {
 
     updatedCount++;
     if (updatedCount % 10 === 0) {
-      process.stdout.write(`\rUpdated ${updatedCount}/${allUsers.length} users`);
+      process.stdout.write(
+        `\rUpdated ${updatedCount}/${allUsers.length} users`
+      );
     }
   }
 
