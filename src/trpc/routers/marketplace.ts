@@ -127,6 +127,9 @@ export const marketplaceRouter = createTRPCRouter({
       });
       if (!item) throw new Error("Item not found");
       const price = Number(item.price || 0);
+      if (!Number.isFinite(price)) {
+        throw new Error("Invalid item price");
+      }
 
       // Ensure user has enough credits
       const me = await users.findOne({ _id: ctx.user._id });
@@ -139,29 +142,36 @@ export const marketplaceRouter = createTRPCRouter({
       if ((me.credits || 0) < price) throw new Error("Insufficient credits");
 
       // Derive classification if missing and enforce sequential rank unlocking
-      const cls = classifyItem(item);
-      if (cls.category === "rank") {
-        // Fetch all rank items and sort by increasing order (min threshold)
-        const allDocs = await items.find({}).toArray();
-        const orderedRanks = allDocs
-          .filter((r) => classifyItem(r).category === "rank")
-          .sort(
-            (a, b) =>
-              (classifyItem(a).order ?? 0) - (classifyItem(b).order ?? 0)
-          );
-        const idx = orderedRanks.findIndex((r) => r.itemId === item.itemId);
-        if (idx > 0) {
-          const requiredPrev = orderedRanks[idx - 1];
-          const hasPrev = await inventory.findOne({
-            userId: ctx.user._id,
-            itemId: requiredPrev.itemId,
-          });
-          if (!hasPrev) {
-            throw new Error(
-              `You must own ${requiredPrev.name} to purchase ${item.name}.`
+      try {
+        const cls = classifyItem(item);
+        if (cls.category === "rank") {
+          // Fetch all rank items and sort by increasing order (min threshold)
+          const allDocs = await items.find({}).toArray();
+          const orderedRanks = allDocs
+            .filter((r) => classifyItem(r).category === "rank")
+            .sort(
+              (a, b) =>
+                (classifyItem(a).order ?? 0) - (classifyItem(b).order ?? 0)
             );
+          const idx = orderedRanks.findIndex((r) => r.itemId === item.itemId);
+          if (idx > 0) {
+            const requiredPrev = orderedRanks[idx - 1];
+            const hasPrev = await inventory.findOne({
+              userId: ctx.user._id,
+              itemId: requiredPrev.itemId,
+            });
+            if (!hasPrev) {
+              throw new Error(
+                `You must own ${requiredPrev.name} to purchase ${item.name}.`
+              );
+            }
           }
         }
+      } catch (e: any) {
+        console.error("Purchase classification error:", e);
+        throw new Error(
+          e.message || "Failed to validate purchase requirements"
+        );
       }
 
       // Check if user already owns the item
@@ -175,72 +185,87 @@ export const marketplaceRouter = createTRPCRouter({
         return { success: true, message: "Item already in inventory." };
       }
 
-      // Deduct and add to inventory atomically-ish; then credit class bank
-      const oldSpent = me.spentLifetime ?? 0;
-      const newSpentLifetime = oldSpent + price;
-      const earned = me.earnedLifetime ?? 20;
-
-      const oldRawScore = calculateRawScore(earned, oldSpent);
-      const newRawScore = calculateRawScore(earned, newSpentLifetime);
-
-      // Dynamic Course Credits Calculation
-      const isIgnored =
-        IGNORED_USERS_FOR_GLOBAL_MAX.includes(me.username) ||
-        IGNORED_USERS_FOR_GLOBAL_MAX.includes(me.email);
-
-      if (!isIgnored) {
-        await updateGlobalStatsDelta(oldRawScore, newRawScore);
-      }
-
-      const { mean, stdDev } = await getGlobalStats();
-
-      const newCourseCredits = calculateCourseCredits(
-        earned,
-        newSpentLifetime,
-        mean,
-        stdDev
-      );
-
-      await users.updateOne(
-        { _id: ctx.user._id },
-        {
-          $inc: { credits: -price, spentLifetime: price },
-          $set: {
-            updatedAt: new Date(),
-            courseCredits: newCourseCredits,
-          },
-        }
-      );
-      await inventory.insertOne({
-        _id: new ObjectId(),
-        userId: ctx.user._id,
-        itemId: item.itemId,
-        sku: item.sku,
-        name: item.name,
-        description: item.description,
-        acquiredAt: new Date(),
-      });
-      await system.updateOne(
-        { accountType: "classBank" },
-        { $inc: { balance: price }, $set: { lastUpdated: new Date() } },
-        { upsert: true }
-      );
-
-      // Update live leaderboard since user credits changed and log transaction (with anonymity applied if active)
       try {
-        const from = me.username || me.email || "";
-        await logTransaction({
-          from,
-          to: "classBank",
-          amount: price,
-          reason: `Purchase: ${item.name}`,
-          timestamp: new Date(),
-          type: "marketplace_purchase",
-          // message will be built inside logTransaction
+        // Deduct and add to inventory atomically-ish; then credit class bank
+        const oldSpent = me.spentLifetime ?? 0;
+        const newSpentLifetime = oldSpent + price;
+        const earned = me.earnedLifetime ?? 20;
+
+        const oldRawScore = calculateRawScore(earned, oldSpent);
+        const newRawScore = calculateRawScore(earned, newSpentLifetime);
+
+        // Dynamic Course Credits Calculation
+        const isIgnored =
+          IGNORED_USERS_FOR_GLOBAL_MAX.includes(me.username) ||
+          IGNORED_USERS_FOR_GLOBAL_MAX.includes(me.email);
+
+        if (!isIgnored) {
+          await updateGlobalStatsDelta(oldRawScore, newRawScore);
+        }
+
+        const { mean, stdDev } = await getGlobalStats();
+
+        const newCourseCredits = calculateCourseCredits(
+          earned,
+          newSpentLifetime,
+          mean,
+          stdDev
+        );
+
+        const updateSet: any = {
+          updatedAt: new Date(),
+          courseCredits: newCourseCredits,
+        };
+
+        // If purchasing a rank, update the user's rank field
+        const cls = classifyItem(item);
+        if (cls.category === "rank") {
+          updateSet.rank = item.name.replace(" Badge", "");
+        }
+
+        await users.updateOne(
+          { _id: ctx.user._id },
+          {
+            $inc: { credits: -price, spentLifetime: price },
+            $set: updateSet,
+          }
+        );
+        await inventory.insertOne({
+          _id: new ObjectId(),
+          userId: ctx.user._id,
+          itemId: item.itemId,
+          sku: item.sku,
+          name: item.name,
+          description: item.description,
+          acquiredAt: new Date(),
         });
-        broadcastLeaderboardUpdate();
-      } catch {}
-      return { success: true };
+        await system.updateOne(
+          { accountType: "classBank" },
+          { $inc: { balance: price }, $set: { lastUpdated: new Date() } },
+          { upsert: true }
+        );
+
+        // Update live leaderboard since user credits changed and log transaction (with anonymity applied if active)
+        try {
+          const from = me.username || me.email || "";
+          await logTransaction({
+            from,
+            to: "classBank",
+            amount: price,
+            reason: `Purchase: ${item.name}`,
+            timestamp: new Date(),
+            type: "marketplace_purchase",
+            // message will be built inside logTransaction
+          });
+          broadcastLeaderboardUpdate();
+        } catch (logErr) {
+          console.error("Failed to log transaction:", logErr);
+        }
+        return { success: true };
+      } catch (e: any) {
+        console.error("Purchase transaction error:", e);
+        throw new Error(e.message || "Failed to complete purchase");
+      }
     }),
 
   // Protected: get current user's inventory

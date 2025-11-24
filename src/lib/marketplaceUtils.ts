@@ -7,18 +7,7 @@ export function classifyItem(item: any): {
   if (item?.category) return { category: item.category, order: item.order };
   const sku: string = String(item?.sku || "");
   const name: string = String(item?.name || "");
-  // Known mappings for legacy seeded SKUs
-  const knownRankOrder: Record<string, number> = {
-    RANK_RECRUIT: 1,
-    RANK_KOMRADE: 2,
-    RANK_APPARATCHIK: 3,
-    RANK_COMMISSAR: 4,
-    RANK_POLITBURO: 5,
-    RANK_GENERAL_SECRETARY: 6,
-  };
-  if (sku in knownRankOrder) {
-    return { category: "rank", order: knownRankOrder[sku] };
-  }
+
   if (sku.startsWith("rank:")) {
     const minStr = sku.split(":")[1];
     const min = Number(minStr);
