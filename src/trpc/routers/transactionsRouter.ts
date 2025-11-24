@@ -103,7 +103,8 @@ export const transactionsRouter = createTRPCRouter({
       const oldRawScore = calculateRawScore(oldEarned, oldSpent);
 
       const newLifetime = oldEarned + amount;
-      const newRank = getVanityRank(newLifetime);
+      // Rank is no longer updated automatically; must be purchased in marketplace
+      // const newRank = getVanityRank(newLifetime);
       const newRawScore = calculateRawScore(newLifetime, oldSpent);
 
       // Dynamic Course Credits Calculation
@@ -134,7 +135,7 @@ export const transactionsRouter = createTRPCRouter({
         $set: {
           updatedAt: new Date(),
           earnedLifetime: newLifetime,
-          rank: newRank,
+          // rank: newRank, // Rank is now updated via marketplace purchase
           courseCredits: newCourseCredits,
         },
       });

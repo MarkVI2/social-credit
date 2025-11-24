@@ -591,55 +591,13 @@ function PeoplesStore({ user }: { user?: { role?: "user" | "admin" } | null }) {
       );
     const utilities = items.filter((item) => item.category === "utility");
 
-    // Determine user's current rank order. Base rank is Comrade Jr. (min 20).
-    const baseOrder = 20; // treat Comrade Jr. as baseline threshold
-    let userOrder = baseOrder;
-    const earned = me.data?.user?.earnedLifetime ?? 0;
-    // Try to infer from rank items using sku 'rank:<min>' thresholds
-    const rankWithMin = ranks
-      .map((r) => ({
-        item: r,
-        min:
-          typeof r.sku === "string" && r.sku.startsWith("rank:")
-            ? Number(r.sku.split(":")[1])
-            : undefined,
-        order: classifyItem(r).order ?? r.order ?? undefined,
-      }))
-      .sort((a, b) => (a.min ?? 0) - (b.min ?? 0));
-    if (rankWithMin.length > 0) {
-      const eligible = rankWithMin.filter((x) =>
-        typeof x.min === "number" ? (x.min as number) <= earned : false
-      );
-      if (eligible.length > 0) {
-        userOrder = Math.max(
-          baseOrder,
-          ...eligible.map((x) => x.order || baseOrder)
-        );
-      } else {
-        // Even with 0 earned, ensure base rank (Comrade Jr.) is considered owned
-        userOrder = baseOrder;
-      }
-    } else {
-      // Fallback using name match against current vanity rank if available
-      const vanity = me.data?.user?.rank as string | undefined;
-      if (vanity) {
-        const match = ranks.find((r) =>
-          (r.name || "").toLowerCase().includes(vanity.toLowerCase())
-        );
-        if (match)
-          userOrder = Math.max(
-            baseOrder,
-            classifyItem(match).order ?? match.order ?? baseOrder
-          );
-      }
-    }
-    // Derive owned rank ids: all ranks with order <= userOrder are considered owned
-    const derivedOwnedIds = new Set<string>(
-      ranks
-        .filter((r) => (classifyItem(r).order ?? r.order ?? 0) <= userOrder)
-        .map((r) => r.id)
-    );
-    // Also include actual inventory items as owned (utilities/ranks)
+    // Determine user's current rank order.
+    // We rely strictly on inventory to determine ownership.
+    // The previous logic inferred ownership based on lifetime earnings, which is incorrect
+    // because ranks must now be explicitly purchased.
+    const derivedOwnedIds = new Set<string>();
+
+    // Include actual inventory items as owned
     for (const inv of myInventory.data || []) {
       if (inv.itemId) derivedOwnedIds.add(inv.itemId);
     }
