@@ -143,7 +143,7 @@ function MarketplaceItemCard({
             purchase?.mutate?.(
               { itemId: item.id },
               {
-                onError: (err) => alert(err.message || "Purchase failed"),
+                onError: (err: any) => alert(err.message || "Purchase failed"),
               }
             )
           }
