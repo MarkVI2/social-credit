@@ -111,7 +111,8 @@ export default function DashboardPage() {
       setReason("");
       // Refresh auth/user to update local credits immediately
       utils.user.getMe.invalidate();
-    } catch (e) {
+    } catch (e: any) {
+      alert(e.message || "Transaction failed");
       console.error("[Send] Transfer error", e);
     }
   };

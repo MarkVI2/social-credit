@@ -9,6 +9,7 @@ import { AuctionSchema, Auction, Bid } from "../../models/auction";
 import { ObjectId } from "mongodb";
 import { getDatabase } from "@/lib/mongodb";
 import { logTransaction } from "@/services/transactionService";
+import { checkTransactionRestriction } from "@/lib/auth";
 
 export const auctionRouter = createTRPCRouter({
   // Admin-only: create a new auction
@@ -176,6 +177,7 @@ export const auctionRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      checkTransactionRestriction(ctx.user);
       // Implementation pending
       return { success: true, message: "Bid placed (implementation pending)." };
     }),
@@ -184,6 +186,7 @@ export const auctionRouter = createTRPCRouter({
   claimDutchAuction: protectedProcedure
     .input(z.object({ auctionId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      checkTransactionRestriction(ctx.user);
       // Implementation pending
       return {
         success: true,
@@ -200,6 +203,7 @@ export const auctionRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      checkTransactionRestriction(ctx.user);
       const db = await getDatabase();
       const auctions = db.collection<Auction>("auctions");
       const users = db.collection<any>("userinformation");
