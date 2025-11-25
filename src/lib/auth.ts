@@ -69,3 +69,16 @@ export async function getUserFromAuthHeader(req: NextRequest) {
 export function requireAdmin(user: User | null): user is User {
   return !!user && user.role === "admin";
 }
+
+export function checkTransactionRestriction(user: User | null) {
+  // "after the 25th of november 2025"
+  // We'll set the cutoff to the end of that day.
+  const cutoff = new Date("2025-11-25T23:59:59");
+  if (Date.now() > cutoff.getTime()) {
+    if (!user || user.role !== "admin") {
+      throw new Error(
+        "Transactions are currently closed (effective after Nov 25, 2025)."
+      );
+    }
+  }
+}

@@ -6,6 +6,7 @@ import { ObjectId } from "mongodb";
 import { protectedProcedure } from "../init";
 import { broadcastLeaderboardUpdate } from "./leaderboardRouter";
 import { logTransaction } from "@/services/transactionService";
+import { checkTransactionRestriction } from "@/lib/auth";
 import { classifyItem } from "@/lib/marketplaceUtils";
 import {
   calculateCourseCredits,
@@ -110,6 +111,7 @@ export const marketplaceRouter = createTRPCRouter({
   purchaseItem: protectedProcedure
     .input(z.object({ itemId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
+      checkTransactionRestriction(ctx.user);
       const db = await getDatabase();
       const items = db.collection("marketplaceItems");
       const users = db.collection("userinformation");

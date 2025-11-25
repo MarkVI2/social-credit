@@ -3,6 +3,7 @@ import { publicProcedure, protectedProcedure, createTRPCRouter } from "../init";
 import { getDatabase } from "@/lib/mongodb";
 import { logTransaction } from "@/services/transactionService";
 import { broadcastLeaderboardUpdate } from "./leaderboardRouter";
+import { checkTransactionRestriction } from "@/lib/auth";
 import {
   getVanityRank,
   calculateCourseCredits,
@@ -28,6 +29,8 @@ export const transactionsRouter = createTRPCRouter({
       const fromId = ctx.user.username || ctx.user.email;
       const toId = input.to.trim();
       const reason = input.reason.trim();
+
+      checkTransactionRestriction(ctx.user);
 
       if (fromId === toId) {
         throw new Error("Cannot send credits to yourself");
