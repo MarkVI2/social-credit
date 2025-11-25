@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { getDatabase } from "@/lib/mongodb";
 import type { User } from "@/types/user";
 import { ObjectId } from "mongodb";
+import { TRPCError } from "@trpc/server";
 
 // Simple token-based auth stored in DB as hashed token. Client stores raw token in localStorage.
 export function createSessionToken(): { token: string; hash: string } {
@@ -76,9 +77,11 @@ export function checkTransactionRestriction(user: User | null) {
   const cutoff = new Date("2025-11-25T23:59:59");
   if (Date.now() > cutoff.getTime()) {
     if (!user || user.role !== "admin") {
-      throw new Error(
-        "Transactions are currently closed (effective after Nov 25, 2025)."
-      );
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Comrade! The fiscal period has ended. Your contributions to the Union are appreciated, but further transactions are restricted to State Administrators. Glory to the Collective!",
+      });
     }
   }
 }

@@ -139,7 +139,14 @@ function MarketplaceItemCard({
       <div className="mt-2 flex items-center gap-2">
         <button
           type="button"
-          onClick={() => purchase?.mutate?.({ itemId: item.id })}
+          onClick={() =>
+            purchase?.mutate?.(
+              { itemId: item.id },
+              {
+                onError: (err) => alert(err.message || "Purchase failed"),
+              }
+            )
+          }
           disabled={isPurchaseDisabled}
           className="px-3 py-1 border-2 rounded-none font-mono text-xs sm:text-sm"
           style={{
