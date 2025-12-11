@@ -56,6 +56,52 @@ export const adminUsersRouter = createTRPCRouter({
       }
     }),
 
+  // Export all users for CSV
+  exportUsers: adminProcedure.query(async () => {
+    try {
+      const db = await getDatabase();
+      const coll = db.collection<User>("userinformation");
+
+      // Fetch all users with necessary fields
+      const users = await coll
+        .find(
+          {},
+          {
+            projection: {
+              email: 1,
+              username: 1,
+              credits: 1,
+              earnedLifetime: 1,
+              spentLifetime: 1,
+              receivedLifetime: 1,
+              transactionsSent: 1,
+              transactionsReceived: 1,
+              courseCredits: 1,
+            },
+          }
+        )
+        .toArray();
+
+      // Map to CSV friendly format
+      const csvData = users.map((u) => ({
+        email_id: u.email,
+        username: u.username,
+        credits_balance: u.credits,
+        lifetime_earned: u.earnedLifetime || 0,
+        lifetime_spent: u.spentLifetime || 0,
+        credits_received: u.receivedLifetime || 0,
+        transactions_sent: u.transactionsSent || 0,
+        transactions_received: u.transactionsReceived || 0,
+        weighted_course_credit_earned: u.courseCredits || 0,
+      }));
+
+      return { success: true, data: csvData };
+    } catch (error) {
+      console.error("Export users error", error);
+      throw new Error("Internal server error");
+    }
+  }),
+
   // Update user role (admin only)
   updateUserRole: adminProcedure
     .input(

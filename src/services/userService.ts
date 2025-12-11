@@ -204,10 +204,17 @@ export class UserService {
         (userWithoutPassword as { role?: string }).role = "user";
       }
 
+      // Update stats on login
+      const updatedUser = await this.updateUserStats(user);
+      const { password: _omitFinal, ...finalUser } = updatedUser as Omit<
+        User,
+        "password"
+      > & { password: string };
+
       return {
         success: true,
         message: "Authentication successful",
-        user: userWithoutPassword as Omit<User, "password">,
+        user: finalUser as Omit<User, "password">,
       };
     } catch (error) {
       console.error("Error authenticating user:", error);
@@ -232,6 +239,107 @@ export class UserService {
     } catch (error) {
       console.error("Error getting user by email:", error);
       return null;
+    }
+  }
+
+  static async updateUserStats(user: User): Promise<User> {
+    try {
+      const db = await getDatabase();
+      const tx = db.collection("transactionHistory");
+      const users = db.collection("userinformation");
+
+      // Aggregate sent stats (all outgoing)
+      const sentAgg = await tx
+        .aggregate([
+          {
+            $match: {
+              from: user.username,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalSpent: { $sum: "$amount" },
+              countSent: { $sum: 1 },
+            },
+          },
+        ])
+        .toArray();
+
+      // Aggregate received stats (all incoming)
+      const recvAgg = await tx
+        .aggregate([
+          {
+            $match: {
+              to: user.username,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalReceived: { $sum: "$amount" },
+              countReceived: { $sum: 1 },
+            },
+          },
+        ])
+        .toArray();
+
+      // Aggregate marketplace/auction spending for spentLifetime
+      const marketplaceSpentAgg = await tx
+        .aggregate([
+          {
+            $match: {
+              from: user.username,
+              to: "classBank",
+              type: { $in: ["marketplace_purchase", "auction_settlement"] },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalSpent: { $sum: "$amount" },
+            },
+          },
+        ])
+        .toArray();
+
+      const transactionsSent = sentAgg[0]?.countSent || 0;
+      const transactionsReceived = recvAgg[0]?.countReceived || 0;
+      const receivedLifetime = recvAgg[0]?.totalReceived || 0;
+
+      // earnedLifetime = 20 + receivedLifetime
+      const earnedLifetime = 20 + receivedLifetime;
+
+      // spentLifetime = marketplace/auction spending
+      const spentLifetime = Math.abs(marketplaceSpentAgg[0]?.totalSpent || 0);
+
+      // Recalculate rank and course credits
+      const { mean, stdDev } = await getGlobalStats();
+      const courseCredits = calculateCourseCredits(
+        earnedLifetime,
+        spentLifetime,
+        mean,
+        stdDev
+      );
+      const rank = getVanityRank(earnedLifetime);
+
+      const updates: Partial<User> = {
+        spentLifetime,
+        transactionsSent,
+        receivedLifetime,
+        transactionsReceived,
+        earnedLifetime,
+        courseCredits,
+        rank,
+        updatedAt: new Date(),
+      };
+
+      await users.updateOne({ _id: user._id }, { $set: updates });
+
+      return { ...user, ...updates };
+    } catch (error) {
+      console.error("Error updating user stats:", error);
+      return user;
     }
   }
 }
