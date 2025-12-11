@@ -32,6 +32,12 @@ export function useAdmin() {
     );
   };
 
+  const exportUsers = () => {
+    return trpc.admin.users.exportUsers.useQuery(undefined, {
+      enabled: false,
+    });
+  };
+
   const trpcUtils = trpc.useUtils();
 
   // Update user credits
@@ -78,6 +84,7 @@ export function useAdmin() {
     // Queries
     getActivity,
     getUsers,
+    exportUsers,
 
     // Mutations
     updateCredits,

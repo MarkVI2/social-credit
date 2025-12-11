@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
-import { IconSearch } from "@tabler/icons-react";
+import { IconSearch, IconDownload } from "@tabler/icons-react";
 // import Link from "next/link";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useAuth } from "@/hooks/useAuth";
 import TransactionEntry from "@/components/TransactionEntry";
 import AdminHeader from "@/components/AdminHeader";
 
 export default function AdminPage() {
+  const { isAdmin } = useAuth();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const limit = 20;
@@ -22,6 +24,40 @@ export default function AdminPage() {
   const users = usersData?.items || [];
   const total = usersData?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  // Export hook
+  const { refetch: fetchExportData, isFetching: isExporting } =
+    useAdmin().exportUsers();
+
+  const handleExport = async () => {
+    const { data } = await fetchExportData();
+    if (data?.success && data.data) {
+      const headers = [
+        "email_id",
+        "username",
+        "credits_balance",
+        "lifetime_earned",
+        "lifetime_spent",
+        "credits_received",
+        "transactions_sent",
+        "transactions_received",
+        "weighted_course_credit_earned",
+      ];
+      const csvContent = [
+        headers.join(","),
+        ...data.data.map((row: any) => headers.map((h) => row[h]).join(",")),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "users_export.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
 
   // Context menu state for destructive admin actions
   const [ctxMenu, setCtxMenu] = useState<{
@@ -93,6 +129,23 @@ export default function AdminPage() {
                 >
                   <IconSearch size={20} />
                 </button>
+                {isAdmin && (
+                  <button
+                    onClick={handleExport}
+                    disabled={isExporting}
+                    className="border-4 btn-3d w-10 h-10 flex items-center justify-center shrink-0"
+                    style={{
+                      background: "var(--accent)",
+                      borderColor: "var(--foreground)",
+                      color: "white",
+                      opacity: isExporting ? 0.5 : 1,
+                    }}
+                    aria-label="Export CSV"
+                    title="Export Users CSV"
+                  >
+                    <IconDownload size={20} />
+                  </button>
+                )}
               </div>
               {/* Table */}
               <div
