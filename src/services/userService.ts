@@ -5,6 +5,7 @@ import {
   getVanityRank,
   calculateCourseCredits,
   calculateRawScore,
+  RANKS,
 } from "@/lib/ranks";
 import crypto from "crypto";
 import { sendVerificationEmail } from "./mailService";
@@ -321,7 +322,23 @@ export class UserService {
         mean,
         stdDev
       );
-      const rank = getVanityRank(earnedLifetime);
+      let rank = getVanityRank(earnedLifetime);
+
+      // Check inventory for purchased ranks that might be higher
+      const inventory = db.collection("userInventory");
+      const userItems = await inventory.find({ userId: user._id }).toArray();
+
+      let maxMin = RANKS.find((r) => r.name === rank)?.min || 0;
+
+      for (const item of userItems) {
+        // Infer rank name from item name (e.g. "Red Banner Badge" -> "Red Banner")
+        const rankName = item.name.replace(" Badge", "");
+        const rankDef = RANKS.find((r) => r.name === rankName);
+        if (rankDef && rankDef.min > maxMin) {
+          maxMin = rankDef.min;
+          rank = rankDef.name;
+        }
+      }
 
       const updates: Partial<User> = {
         spentLifetime,
